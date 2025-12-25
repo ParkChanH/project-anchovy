@@ -108,7 +108,7 @@ export function useDailyLog() {
   // dailyLog 객체 생성 (호환성 유지)
   const dailyLog: DailyLog = {
     id: user?.uid ? `${user.uid}_${new Date().toISOString().split('T')[0]}` : 'local',
-    oderId: user?.uid || 'local',
+    userId: user?.uid || 'local',
     date: new Date().toISOString().split('T')[0],
     dietScore: completedMeals.length,
     completedMeals,

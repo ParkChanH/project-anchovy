@@ -48,7 +48,6 @@ export default function HistoryCalendar() {
     if (isToday(date)) {
       return {
         id: 'today',
-        oderId: user?.uid || 'local',
         userId: user?.uid || 'local',
         date: dateStr,
         dietScore: completedMeals.length,
