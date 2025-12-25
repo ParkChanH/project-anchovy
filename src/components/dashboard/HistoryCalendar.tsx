@@ -49,6 +49,7 @@ export default function HistoryCalendar() {
       return {
         id: 'today',
         oderId: user?.uid || 'local',
+        userId: user?.uid || 'local',
         date: dateStr,
         dietScore: completedMeals.length,
         completedMeals: completedMeals,
