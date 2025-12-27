@@ -259,35 +259,35 @@ export default function ProgressCard({
               </div>
 
               {/* 체중 입력 */}
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <motion.button
-                  onClick={() => adjustWeight(-0.1)}
-                  className="w-14 h-14 rounded-2xl bg-white/5 text-white text-2xl border border-white/10 hover:bg-white/10 active:bg-white/20"
-                  whileTap={{ scale: 0.9 }}
-                >
-                  −
-                </motion.button>
+              <div className="flex flex-col items-center gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <motion.button
+                    onClick={() => adjustWeight(-0.1)}
+                    className="w-14 h-14 rounded-2xl bg-white/5 text-white text-2xl border border-white/10 hover:bg-white/10 active:bg-white/20"
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    −
+                  </motion.button>
 
-                <div className="relative">
                   <input
                     type="number"
                     value={weightInput}
                     onChange={(e) => setWeightInput(e.target.value)}
-                    className="w-32 h-20 text-center text-4xl font-black bg-white/5 border-2 border-[#C6FF00]/30 rounded-2xl text-white focus:outline-none focus:border-[#C6FF00] transition-colors"
+                    className="w-28 h-20 text-center text-4xl font-black bg-white/5 border-2 border-[#C6FF00]/30 rounded-2xl text-white focus:outline-none focus:border-[#C6FF00] transition-colors"
                     step="0.1"
                     min="20"
                     max="200"
                   />
-                  <span className="absolute -right-8 top-1/2 -translate-y-1/2 text-gray-500 font-medium">kg</span>
-                </div>
 
-                <motion.button
-                  onClick={() => adjustWeight(0.1)}
-                  className="w-14 h-14 rounded-2xl bg-white/5 text-white text-2xl border border-white/10 hover:bg-white/10 active:bg-white/20"
-                  whileTap={{ scale: 0.9 }}
-                >
-                  +
-                </motion.button>
+                  <motion.button
+                    onClick={() => adjustWeight(0.1)}
+                    className="w-14 h-14 rounded-2xl bg-white/5 text-white text-2xl border border-white/10 hover:bg-white/10 active:bg-white/20"
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    +
+                  </motion.button>
+                </div>
+                <span className="text-gray-400 font-medium text-lg">kg</span>
               </div>
 
               {/* 변화량 표시 */}
