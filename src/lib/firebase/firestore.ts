@@ -81,11 +81,19 @@ const DEFAULT_PROFILE: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt' | 'sta
   onboardingCompleted: false,
 };
 
+// undefined 값을 제거하는 유틸리티 함수
+function removeUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 export async function createUserProfile(userId: string, data: Partial<UserProfile>) {
   const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const cleanData = removeUndefined(data);
   await setDoc(userRef, {
     ...DEFAULT_PROFILE,
-    ...data,
+    ...cleanData,
     startDate: Timestamp.now(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -103,8 +111,9 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
   const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const cleanData = removeUndefined(data);
   await updateDoc(userRef, {
-    ...data,
+    ...cleanData,
     updatedAt: serverTimestamp(),
   });
 }
@@ -119,8 +128,9 @@ export async function updateUserWeight(userId: string, weight: number) {
 
 export async function completeOnboarding(userId: string, data: Partial<UserProfile>) {
   const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const cleanData = removeUndefined(data);
   await updateDoc(userRef, {
-    ...data,
+    ...cleanData,
     onboardingCompleted: true,
     startDate: Timestamp.now(),
     updatedAt: serverTimestamp(),
