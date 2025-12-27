@@ -1,10 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { completeOnboarding } from '@/lib/firebase/firestore';
+import { completeOnboarding, UserProfile } from '@/lib/firebase/firestore';
+import { 
+  matchProgramToUser, 
+  calculateBMI, 
+  getGoalTypeLabel,
+  formatCalories,
+  MatchedProgram 
+} from '@/lib/programDatabase';
 
 interface OnboardingData {
   nickname: string;
@@ -23,14 +30,15 @@ interface OnboardingData {
   hasGymAccess: boolean;
 }
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 const STEP_INFO = [
   { emoji: '👋', title: '안녕하세요!', subtitle: '먼저 기본 정보를 알려주세요' },
   { emoji: '📏', title: '신체 정보', subtitle: '정확한 목표 설정을 위해 필요해요' },
   { emoji: '🎯', title: '운동 목표', subtitle: '목표에 맞는 루틴을 추천해드릴게요' },
   { emoji: '🥗', title: '식이 제한', subtitle: '맞춤 식단을 위해 알려주세요' },
-  { emoji: '⏰', title: '생활 패턴', subtitle: '마지막으로 일상을 알려주세요' },
+  { emoji: '⏰', title: '생활 패턴', subtitle: '일상에 맞는 프로그램을 찾아볼게요' },
+  { emoji: '✨', title: '맞춤 프로그램', subtitle: '당신만을 위한 프로그램이에요!' },
 ];
 
 export default function OnboardingPage() {
@@ -60,6 +68,35 @@ export default function OnboardingPage() {
   const updateData = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
   };
+
+  // 프로그램 매칭 계산
+  const matchedProgram: MatchedProgram = useMemo(() => {
+    const tempProfile: UserProfile = {
+      id: 'temp',
+      height: data.height,
+      currentWeight: data.currentWeight,
+      targetWeight: data.targetWeight,
+      startWeight: data.currentWeight,
+      goalType: data.goalType,
+      experienceLevel: data.experienceLevel,
+      workoutDaysPerWeek: data.workoutDaysPerWeek,
+      lactoseIntolerance: data.lactoseIntolerance,
+      vegetarian: data.vegetarian,
+      allergies: [],
+      lifestyle: data.lifestyle,
+      preferredWorkoutTime: data.preferredWorkoutTime,
+      hasGymAccess: data.hasGymAccess,
+      gender: data.gender,
+      birthYear: data.birthYear,
+      startDate: null as unknown as import('firebase/firestore').Timestamp,
+      onboardingCompleted: false,
+      createdAt: null as unknown as import('firebase/firestore').Timestamp,
+      updatedAt: null as unknown as import('firebase/firestore').Timestamp,
+    };
+    return matchProgramToUser(tempProfile);
+  }, [data]);
+
+  const bmi = useMemo(() => calculateBMI(data.currentWeight, data.height), [data.currentWeight, data.height]);
 
   const handleNext = () => {
     if (step < TOTAL_STEPS) {
@@ -378,23 +415,152 @@ export default function OnboardingPage() {
                   ))}
                 </div>
               </div>
-              
-              {/* 요약 */}
+            </div>
+          );
+
+        case 6:
+          return (
+            <div className="space-y-6">
+              {/* BMI & 목표 분석 */}
               <motion.div 
-                className="bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl p-5 mt-4 border border-white/10"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-br from-[#C6FF00]/10 to-[#9EF01A]/5 rounded-2xl p-5 border border-[#C6FF00]/20"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
               >
-                <h3 className="text-sm text-gray-400 mb-4 font-medium">📋 입력 정보 요약</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <SummaryRow label="닉네임" value={data.nickname || '미입력'} />
-                  <SummaryRow label="체중 목표" value={`${data.currentWeight}kg → ${data.targetWeight}kg`} highlight />
-                  <SummaryRow label="주 운동" value={`${data.workoutDaysPerWeek}회`} />
-                  <SummaryRow 
-                    label="목표" 
-                    value={data.goalType === 'bulk' ? '💪 벌크업' : data.goalType === 'cut' ? '🔥 다이어트' : '⚖️ 유지'} 
-                  />
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-gray-400 text-sm">당신의 BMI</p>
+                    <p className="text-3xl font-black text-white">{bmi.toFixed(1)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-400 text-sm">추천 목표</p>
+                    <p className="text-xl font-bold text-[#C6FF00]">{getGoalTypeLabel(matchedProgram.goalType)}</p>
+                  </div>
                 </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className={`py-2 rounded-lg ${bmi < 18.5 ? 'bg-[#C6FF00]/20 text-[#C6FF00]' : 'bg-white/5 text-gray-500'}`}>
+                    저체중 &lt;18.5
+                  </div>
+                  <div className={`py-2 rounded-lg ${bmi >= 18.5 && bmi <= 23 ? 'bg-[#C6FF00]/20 text-[#C6FF00]' : 'bg-white/5 text-gray-500'}`}>
+                    정상 18.5-23
+                  </div>
+                  <div className={`py-2 rounded-lg ${bmi > 23 ? 'bg-orange-500/20 text-orange-400' : 'bg-white/5 text-gray-500'}`}>
+                    과체중 &gt;23
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* 칼로리 정보 */}
+              <motion.div 
+                className="bg-white/5 rounded-2xl p-5 border border-white/10"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h3 className="text-sm text-gray-400 mb-3 font-medium">🔥 일일 권장 칼로리</h3>
+                <div className="text-center py-3">
+                  <motion.p 
+                    className="text-4xl font-black text-[#C6FF00]"
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                  >
+                    {formatCalories(matchedProgram.calorieInfo.targetCalories)}
+                  </motion.p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    기초대사량 {formatCalories(matchedProgram.calorieInfo.bmr)} × 활동계수 
+                    {matchedProgram.calorieInfo.surplus > 0 && ` + ${matchedProgram.calorieInfo.surplus}kcal`}
+                    {matchedProgram.calorieInfo.surplus < 0 && ` ${matchedProgram.calorieInfo.surplus}kcal`}
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* 매칭된 운동 프로그램 */}
+              {matchedProgram.workout && (
+                <motion.div 
+                  className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-2xl p-5 border border-purple-500/20"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">🏋️</span>
+                    <h3 className="text-white font-bold">운동 프로그램</h3>
+                  </div>
+                  <p className="text-[#C6FF00] font-bold mb-2">{matchedProgram.workout.description}</p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2 py-1 bg-white/10 rounded-full text-gray-300">
+                      주 {matchedProgram.workout.frequency}일
+                    </span>
+                    <span className="px-2 py-1 bg-white/10 rounded-full text-gray-300">
+                      {matchedProgram.workout.hasGymAccess ? '🏢 헬스장' : '🏠 홈트'}
+                    </span>
+                    <span className="px-2 py-1 bg-white/10 rounded-full text-gray-300">
+                      {matchedProgram.workout.level === 'beginner' ? '초급' : matchedProgram.workout.level === 'intermediate' ? '중급' : '고급'}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 매칭된 식단 */}
+              {matchedProgram.diet && (
+                <motion.div 
+                  className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-2xl p-5 border border-orange-500/20"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">🥗</span>
+                    <h3 className="text-white font-bold">식단 플랜</h3>
+                  </div>
+                  <p className="text-orange-400 font-bold mb-2">{matchedProgram.diet.description}</p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2 py-1 bg-white/10 rounded-full text-gray-300">
+                      {formatCalories(matchedProgram.diet.targetCalories)}
+                    </span>
+                    {matchedProgram.diet.lactoseFree && (
+                      <span className="px-2 py-1 bg-blue-500/20 rounded-full text-blue-300">🥛 유당프리</span>
+                    )}
+                    {matchedProgram.diet.vegetarian && (
+                      <span className="px-2 py-1 bg-green-500/20 rounded-full text-green-300">🥬 채식</span>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 추천사항 */}
+              {matchedProgram.recommendations.length > 0 && (
+                <motion.div 
+                  className="space-y-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <h3 className="text-sm text-gray-400 font-medium">💡 맞춤 조언</h3>
+                  {matchedProgram.recommendations.map((rec, i) => (
+                    <motion.p 
+                      key={i}
+                      className="text-sm text-gray-300 bg-white/5 px-4 py-2 rounded-lg"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + i * 0.1 }}
+                    >
+                      {rec}
+                    </motion.p>
+                  ))}
+                </motion.div>
+              )}
+
+              {/* 매칭 점수 */}
+              <motion.div 
+                className="text-center pt-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
+                <p className="text-gray-500 text-sm">프로그램 매칭 적합도</p>
+                <p className="text-2xl font-bold text-[#C6FF00]">{matchedProgram.matchScore}%</p>
               </motion.div>
             </div>
           );

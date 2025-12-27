@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDailyLog } from '@/hooks/useDailyLog';
-import { getTodayMealPlan, calculateTotalCalories, triggerHaptic } from '@/lib/utils';
-import { GOALS } from '@/lib/constants';
-import type { MealData } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
+import { getProfileBasedMealPlan, triggerHaptic } from '@/lib/utils';
+import { matchProgramToUser } from '@/lib/programDatabase';
 
 type MealType = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'supplement';
 
@@ -19,7 +19,8 @@ const MEAL_INFO: Record<MealType, { label: string; time: string; icon: string }>
 
 export default function MealPlanCard() {
   const { completedMeals: completedMealsArray, toggleMeal, loading } = useDailyLog();
-  const todayMealPlan = getTodayMealPlan();
+  const { profile } = useAuth();
+  const todayMealPlan = getProfileBasedMealPlan(profile);
 
   const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
 
@@ -27,6 +28,11 @@ export default function MealPlanCard() {
   const completedMeals = new Set(completedMealsArray);
   const completedCount = completedMeals.size;
   const scoreLevel = getScoreLevel(completedCount);
+
+  // 프로필 기반 칼로리 목표
+  const calorieTarget = profile 
+    ? matchProgramToUser(profile).calorieInfo.targetCalories 
+    : todayMealPlan.totalCalories;
 
   // 완료된 칼로리 합산
   const mealTypes: MealType[] = ['breakfast', 'lunch', 'snack', 'dinner', 'supplement'];
@@ -42,7 +48,7 @@ export default function MealPlanCard() {
     await toggleMeal(type);
   };
 
-  const calorieProgress = (completedCalories / GOALS.dailyCalorieTarget) * 100;
+  const calorieProgress = (completedCalories / calorieTarget) * 100;
 
   return (
     <motion.section 
@@ -69,7 +75,7 @@ export default function MealPlanCard() {
             <div>
               <h3 className="text-xl font-bold text-white">오늘의 식단</h3>
               <p className="text-gray-400 text-sm">
-                목표 {GOALS.dailyCalorieTarget.toLocaleString()}kcal
+                목표 {calorieTarget.toLocaleString()}kcal
               </p>
             </div>
           </div>
@@ -133,7 +139,7 @@ export default function MealPlanCard() {
               initial={{ scale: 1.2, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
             >
-              {completedCalories.toLocaleString()} / {GOALS.dailyCalorieTarget.toLocaleString()} kcal
+              {completedCalories.toLocaleString()} / {calorieTarget.toLocaleString()} kcal
             </motion.span>
           </div>
           
@@ -175,7 +181,7 @@ export default function MealPlanCard() {
 
 interface MealSlotRowProps {
   type: MealType;
-  meal: MealData;
+  meal: { name: string; detail: string; calories: number; emoji: string };
   info: { label: string; time: string; icon: string };
   index: number;
   isCompleted: boolean;

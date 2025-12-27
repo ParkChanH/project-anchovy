@@ -4,25 +4,56 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDailyLog } from '@/hooks/useDailyLog';
 import { useAuth } from '@/context/AuthContext';
-import { getTodayRoutine, triggerHaptic } from '@/lib/utils';
+import { getProfileBasedRoutine, triggerHaptic } from '@/lib/utils';
 import { getBurnfitUrl } from '@/lib/constants';
 import { getLastWorkoutRecord } from '@/lib/firebase/firestore';
-import type { ExerciseData } from '@/lib/constants';
 
-// 운동 파트별 한글 설명
-const WORKOUT_INFO: Record<string, { name: string; muscles: string; gradient: string }> = {
-  Push: { name: '푸시', muscles: '가슴 / 어깨 / 삼두', gradient: 'from-rose-600 to-orange-500' },
-  Pull: { name: '풀', muscles: '등 / 이두', gradient: 'from-blue-600 to-cyan-500' },
-  Legs: { name: '하체', muscles: '허벅지 / 둔근 / 종아리', gradient: 'from-purple-600 to-pink-500' },
-  Rest: { name: '휴식', muscles: '회복의 날', gradient: 'from-slate-600 to-slate-500' },
+// 운동 파트별 한글 설명 (동적으로 확장)
+const getPartInfo = (part: string): { name: string; muscles: string; gradient: string } => {
+  const partMap: Record<string, { name: string; muscles: string; gradient: string }> = {
+    Push: { name: '푸시', muscles: '가슴 / 어깨 / 삼두', gradient: 'from-rose-600 to-orange-500' },
+    Pull: { name: '풀', muscles: '등 / 이두', gradient: 'from-blue-600 to-cyan-500' },
+    Legs: { name: '하체', muscles: '허벅지 / 둔근 / 종아리', gradient: 'from-purple-600 to-pink-500' },
+    Rest: { name: '휴식', muscles: '회복의 날', gradient: 'from-slate-600 to-slate-500' },
+    Chest: { name: '가슴', muscles: '대흉근 / 전면삼각근 / 삼두', gradient: 'from-rose-600 to-orange-500' },
+    Back: { name: '등', muscles: '광배근 / 승모근 / 이두', gradient: 'from-blue-600 to-cyan-500' },
+    Shoulder: { name: '어깨', muscles: '삼각근 / 승모근', gradient: 'from-amber-500 to-yellow-500' },
+    Arms: { name: '팔', muscles: '이두 / 삼두 / 전완', gradient: 'from-emerald-600 to-teal-500' },
+    'Full Body': { name: '전신', muscles: '전신 운동', gradient: 'from-violet-600 to-purple-500' },
+    'Full Body A': { name: '전신 A', muscles: '전신 운동', gradient: 'from-violet-600 to-purple-500' },
+    'Full Body B': { name: '전신 B', muscles: '전신 운동', gradient: 'from-indigo-600 to-blue-500' },
+    'Full Body C': { name: '전신 C', muscles: '전신 운동', gradient: 'from-fuchsia-600 to-pink-500' },
+    'Full Body Circuit A': { name: '서킷 A', muscles: '전신 + 유산소', gradient: 'from-orange-600 to-red-500' },
+    'Full Body Circuit B': { name: '서킷 B', muscles: '전신 + 유산소', gradient: 'from-orange-500 to-amber-500' },
+    'Full Body Circuit C': { name: '서킷 C', muscles: '전신 + 유산소', gradient: 'from-yellow-600 to-orange-500' },
+    'Upper': { name: '상체', muscles: '가슴 / 등 / 어깨 / 팔', gradient: 'from-sky-600 to-blue-500' },
+    'Lower': { name: '하체', muscles: '허벅지 / 둔근 / 종아리', gradient: 'from-purple-600 to-pink-500' },
+    'Upper Body': { name: '상체', muscles: '가슴 / 등 / 어깨 / 팔', gradient: 'from-sky-600 to-blue-500' },
+    'Lower Body': { name: '하체', muscles: '허벅지 / 둔근 / 종아리', gradient: 'from-purple-600 to-pink-500' },
+    'Upper + Cardio': { name: '상체+유산소', muscles: '상체 + 심폐', gradient: 'from-cyan-600 to-teal-500' },
+    'Lower + Core': { name: '하체+코어', muscles: '하체 + 복근', gradient: 'from-violet-600 to-fuchsia-500' },
+    'Core': { name: '코어', muscles: '복근 / 허리', gradient: 'from-amber-600 to-orange-500' },
+    'Core & Cardio': { name: '코어+유산소', muscles: '복근 + 심폐', gradient: 'from-lime-600 to-green-500' },
+    'Cardio': { name: '유산소', muscles: '심폐 지구력', gradient: 'from-green-600 to-emerald-500' },
+  };
+
+  // 부분 일치도 처리
+  for (const [key, value] of Object.entries(partMap)) {
+    if (part.includes(key) || key.includes(part)) {
+      return value;
+    }
+  }
+
+  return { name: part, muscles: '운동', gradient: 'from-gray-600 to-gray-500' };
 };
 
 export default function WorkoutCard() {
   const { completedExercises: completedExercisesArray, toggleExercise, loading } = useDailyLog();
-  const todayRoutine = getTodayRoutine();
-  const { type, focus, exercises } = todayRoutine;
-  const partInfo = WORKOUT_INFO[type];
-  const isRestDay = type === 'Rest';
+  const { profile } = useAuth();
+  const todayRoutine = getProfileBasedRoutine(profile);
+  const { type, focus, exercises, isWorkoutDay } = todayRoutine;
+  const partInfo = getPartInfo(type);
+  const isRestDay = !isWorkoutDay;
 
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
 
@@ -151,7 +182,9 @@ export default function WorkoutCard() {
   );
 }
 
-function RestDayContent({ exercises }: { exercises: ExerciseData[] }) {
+type ExerciseDataType = { name: string; sets: number; reps: string; burnfitId?: string; note?: string };
+
+function RestDayContent({ exercises }: { exercises: ExerciseDataType[] }) {
   return (
     <motion.div 
       className="text-center py-8"
@@ -183,7 +216,7 @@ function RestDayContent({ exercises }: { exercises: ExerciseData[] }) {
 }
 
 interface ExerciseItemProps {
-  exercise: ExerciseData;
+  exercise: ExerciseDataType;
   index: number;
   isCompleted: boolean;
   isExpanded: boolean;

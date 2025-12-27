@@ -1,5 +1,7 @@
 import { PROJECT_START_DATE, WEEKLY_ROUTINE, WEEKLY_MEAL_PLAN, DayOfWeek, DAY_LABELS } from './constants';
 import type { DailyRoutine, DailyMealPlan } from './constants';
+import type { UserProfile } from '@/lib/firebase/firestore';
+import { matchProgramToUser, WORKOUT_PROGRAMS, DIET_PLANS, DailyWorkout, DailyMeal } from './programDatabase';
 
 // D-Day 계산
 export function calculateDDay(startDate: Date = PROJECT_START_DATE): number {
@@ -44,6 +46,132 @@ export function getTodayMealPlan(): DailyMealPlan {
 // 오늘의 운동 파트 (이전 호환성)
 export function getTodayWorkout() {
   return getTodayRoutine().type;
+}
+
+// ============================================
+// 프로필 기반 동적 루틴
+// ============================================
+
+export interface DynamicRoutine {
+  type: string;
+  focus: string;
+  exercises: {
+    name: string;
+    sets: number;
+    reps: string;
+    burnfitId?: string;
+    note?: string;
+  }[];
+  isWorkoutDay: boolean;
+}
+
+export interface DynamicMealPlan {
+  breakfast: { name: string; detail: string; calories: number; emoji: string };
+  lunch: { name: string; detail: string; calories: number; emoji: string };
+  snack: { name: string; detail: string; calories: number; emoji: string };
+  dinner: { name: string; detail: string; calories: number; emoji: string };
+  supplement: { name: string; detail: string; calories: number; emoji: string };
+  totalCalories: number;
+}
+
+// 프로필 기반 오늘의 운동 루틴 가져오기
+export function getProfileBasedRoutine(profile: UserProfile | null): DynamicRoutine {
+  // 프로필이 없으면 기본 루틴 반환
+  if (!profile || !profile.onboardingCompleted) {
+    const defaultRoutine = getTodayRoutine();
+    return {
+      type: defaultRoutine.type,
+      focus: defaultRoutine.focus,
+      exercises: defaultRoutine.exercises.map(e => ({
+        name: e.name,
+        sets: e.sets,
+        reps: e.reps,
+        burnfitId: e.burnfitId,
+        note: e.note,
+      })),
+      isWorkoutDay: defaultRoutine.type !== 'Rest',
+    };
+  }
+
+  const matched = matchProgramToUser(profile);
+  const dayCode = getTodayDayCode();
+
+  if (!matched.workout) {
+    return {
+      type: 'Rest',
+      focus: '오늘은 휴식일입니다',
+      exercises: [],
+      isWorkoutDay: false,
+    };
+  }
+
+  const todayWorkout = matched.workout.routines[dayCode];
+  
+  if (!todayWorkout) {
+    return {
+      type: 'Rest',
+      focus: '오늘은 휴식일입니다 💤',
+      exercises: [
+        { name: '스트레칭', sets: 1, reps: '15분', note: '근육 회복에 집중' },
+        { name: '가벼운 산책', sets: 1, reps: '20분', note: '활성 회복' },
+      ],
+      isWorkoutDay: false,
+    };
+  }
+
+  return {
+    type: todayWorkout.part,
+    focus: `${matched.workout.description} - ${todayWorkout.part}`,
+    exercises: todayWorkout.exercises,
+    isWorkoutDay: true,
+  };
+}
+
+// 프로필 기반 오늘의 식단 가져오기
+export function getProfileBasedMealPlan(profile: UserProfile | null): DynamicMealPlan {
+  // 프로필이 없으면 기본 식단 반환
+  if (!profile || !profile.onboardingCompleted) {
+    const defaultMeal = getTodayMealPlan();
+    return {
+      breakfast: { ...defaultMeal.breakfast, calories: defaultMeal.breakfast.calories || 0 },
+      lunch: { ...defaultMeal.lunch, calories: defaultMeal.lunch.calories || 0 },
+      snack: { ...defaultMeal.snack, calories: defaultMeal.snack.calories || 0 },
+      dinner: { ...defaultMeal.dinner, calories: defaultMeal.dinner.calories || 0 },
+      supplement: { ...defaultMeal.supplement, calories: defaultMeal.supplement.calories || 0 },
+      totalCalories: calculateTotalCalories(defaultMeal),
+    };
+  }
+
+  const matched = matchProgramToUser(profile);
+  
+  if (!matched.diet) {
+    const defaultMeal = getTodayMealPlan();
+    return {
+      breakfast: { ...defaultMeal.breakfast, calories: defaultMeal.breakfast.calories || 0 },
+      lunch: { ...defaultMeal.lunch, calories: defaultMeal.lunch.calories || 0 },
+      snack: { ...defaultMeal.snack, calories: defaultMeal.snack.calories || 0 },
+      dinner: { ...defaultMeal.dinner, calories: defaultMeal.dinner.calories || 0 },
+      supplement: { ...defaultMeal.supplement, calories: defaultMeal.supplement.calories || 0 },
+      totalCalories: calculateTotalCalories(defaultMeal),
+    };
+  }
+
+  const mealGuide = matched.diet.menuGuide;
+  const totalCalories = 
+    mealGuide.breakfast.calories +
+    mealGuide.lunch.calories +
+    mealGuide.snack.calories +
+    mealGuide.dinner.calories +
+    mealGuide.supplement.calories;
+
+  return {
+    breakfast: mealGuide.breakfast,
+    lunch: mealGuide.lunch,
+    snack: mealGuide.snack,
+    dinner: mealGuide.dinner,
+    supplement: mealGuide.supplement,
+    totalCalories,
+  };
 }
 
 // 1RM 추정 계산 (Brzycki 공식)
