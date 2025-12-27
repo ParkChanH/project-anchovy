@@ -295,7 +295,7 @@ function BottomNav({ onAIClick }: { onAIClick: () => void }) {
               onClick={item.onClick}
               whileTap={{ scale: 0.9 }}
               className={`
-                flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl transition-all min-h-[52px]
+                flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl transition-all min-h-[52px] overflow-hidden
                 ${item.active 
                   ? 'text-[#C6FF00]' 
                   : item.danger 
@@ -304,8 +304,8 @@ function BottomNav({ onAIClick }: { onAIClick: () => void }) {
                 }
               `}
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-lg leading-none">{item.icon}</span>
+              <span className="text-[9px] font-medium whitespace-nowrap truncate max-w-full px-1">{item.label}</span>
             </motion.button>
           )
         ))}
