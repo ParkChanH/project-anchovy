@@ -4,18 +4,26 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { 
   User, 
   signInAnonymously, 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   onAuthStateChanged,
-  signOut as firebaseSignOut 
+  signOut as firebaseSignOut,
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { createUserProfile, getUserProfile, UserProfile } from '@/lib/firebase/firestore';
+import { createUserProfile, getUserProfile, UserProfile, updateUserProfile } from '@/lib/firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  isOffline: boolean; // Firebase 연결 실패 시 true
-  signIn: () => Promise<void>;
+  isOffline: boolean;
+  signInAnon: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, nickname: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -35,14 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
 
   // 프로필 불러오기
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (firebaseUser: User) => {
     try {
-      let userProfile = await getUserProfile(userId);
+      let userProfile = await getUserProfile(firebaseUser.uid);
       
       // 프로필이 없으면 새로 생성
       if (!userProfile) {
-        await createUserProfile(userId, {});
-        userProfile = await getUserProfile(userId);
+        await createUserProfile(firebaseUser.uid, {
+          email: firebaseUser.email || undefined,
+          nickname: firebaseUser.displayName || undefined,
+          photoUrl: firebaseUser.photoURL || undefined,
+        });
+        userProfile = await getUserProfile(firebaseUser.uid);
       }
       
       setProfile(userProfile);
@@ -54,16 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 프로필 새로고침
   const refreshProfile = async () => {
     if (user) {
-      await loadProfile(user.uid);
+      await loadProfile(user);
     }
   };
 
   // 익명 로그인
-  const signIn = async () => {
+  const signInAnon = async () => {
     if (!isFirebaseConfigured()) {
-      console.warn('Firebase 설정이 없습니다. 오프라인 모드로 실행합니다.');
+      console.warn('Firebase 설정이 없습니다.');
       setIsOffline(true);
-      setLoading(false);
       return;
     }
 
@@ -71,11 +82,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const result = await signInAnonymously(auth);
       setUser(result.user);
-      await loadProfile(result.user.uid);
+      await loadProfile(result.user);
       setIsOffline(false);
     } catch (error) {
-      console.error('로그인 실패:', error);
+      console.error('익명 로그인 실패:', error);
       setIsOffline(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 이메일 로그인
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      setUser(result.user);
+      await loadProfile(result.user);
+      setIsOffline(false);
+    } catch (error: unknown) {
+      console.error('이메일 로그인 실패:', error);
+      const errorMessage = error instanceof Error ? error.message : '로그인 실패';
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 이메일 회원가입
+  const signUpWithEmail = async (email: string, password: string, nickname: string) => {
+    try {
+      setLoading(true);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // 사용자 프로필 업데이트
+      await updateProfile(result.user, { displayName: nickname });
+      
+      // Firestore 프로필 생성
+      await createUserProfile(result.user.uid, {
+        email,
+        nickname,
+      });
+      
+      setUser(result.user);
+      await loadProfile(result.user);
+      setIsOffline(false);
+    } catch (error: unknown) {
+      console.error('회원가입 실패:', error);
+      const errorMessage = error instanceof Error ? error.message : '회원가입 실패';
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 구글 로그인
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      
+      // 기존 프로필 확인
+      let userProfile = await getUserProfile(result.user.uid);
+      
+      if (!userProfile) {
+        // 새 사용자면 프로필 생성
+        await createUserProfile(result.user.uid, {
+          email: result.user.email || undefined,
+          nickname: result.user.displayName || undefined,
+          photoUrl: result.user.photoURL || undefined,
+        });
+      } else {
+        // 기존 사용자면 이메일/사진 업데이트
+        await updateUserProfile(result.user.uid, {
+          email: result.user.email || undefined,
+          photoUrl: result.user.photoURL || undefined,
+        });
+      }
+      
+      setUser(result.user);
+      await loadProfile(result.user);
+      setIsOffline(false);
+    } catch (error: unknown) {
+      console.error('구글 로그인 실패:', error);
+      const errorMessage = error instanceof Error ? error.message : '구글 로그인 실패';
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -96,10 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 인증 상태 감지
   useEffect(() => {
-    // Firebase 설정이 없으면 오프라인 모드
     if (!isFirebaseConfigured()) {
       console.warn('Firebase 설정이 없습니다. 오프라인 모드로 실행합니다.');
-      console.info('README.md의 Firebase 설정 가이드를 참고하세요.');
       setIsOffline(true);
       setLoading(false);
       return;
@@ -108,32 +198,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        await loadProfile(firebaseUser.uid);
+        await loadProfile(firebaseUser);
         setIsOffline(false);
-        setLoading(false);
       } else {
-        // 사용자가 없으면 자동으로 익명 로그인 시도
-        try {
-          const result = await signInAnonymously(auth);
-          setUser(result.user);
-          await loadProfile(result.user.uid);
-          setIsOffline(false);
-        } catch (error) {
-          console.debug('로그인 실패:', error);
-          // 익명 인증 실패 시 오프라인 모드로 전환
-          setUser(null);
-          setProfile(null);
-          setIsOffline(true);
-        }
-        setLoading(false);
+        setUser(null);
+        setProfile(null);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isOffline, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      isOffline, 
+      signInAnon,
+      signInWithEmail, 
+      signUpWithEmail,
+      signInWithGoogle,
+      signOut, 
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

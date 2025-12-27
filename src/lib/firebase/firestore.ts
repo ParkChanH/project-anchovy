@@ -5,7 +5,6 @@ import {
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
@@ -25,32 +24,71 @@ export const COLLECTIONS = {
 };
 
 // ============================================
-// 사용자 프로필
+// 사용자 프로필 (확장됨)
 // ============================================
 export interface UserProfile {
   id: string;
+  // 기본 정보
+  nickname?: string;
+  email?: string;
+  photoUrl?: string;
+  
+  // 신체 정보
   height: number;
   currentWeight: number;
   targetWeight: number;
   startWeight: number;
+  gender?: 'male' | 'female';
+  birthYear?: number;
+  
+  // 목표 설정
+  goalType: 'bulk' | 'cut' | 'maintain';
+  experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+  workoutDaysPerWeek: number;
+  
+  // 식이 제한
   lactoseIntolerance: boolean;
+  vegetarian: boolean;
+  allergies: string[];
+  
+  // 생활 패턴
+  lifestyle: 'office' | 'active' | 'student';
+  preferredWorkoutTime: 'morning' | 'afternoon' | 'evening';
+  hasGymAccess: boolean;
+  
+  // 시스템 정보
   startDate: Timestamp;
+  onboardingCompleted: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
+// 기본 프로필 값
+const DEFAULT_PROFILE: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt' | 'startDate'> = {
+  height: 170,
+  currentWeight: 60,
+  targetWeight: 65,
+  startWeight: 60,
+  goalType: 'bulk',
+  experienceLevel: 'beginner',
+  workoutDaysPerWeek: 3,
+  lactoseIntolerance: false,
+  vegetarian: false,
+  allergies: [],
+  lifestyle: 'office',
+  preferredWorkoutTime: 'evening',
+  hasGymAccess: true,
+  onboardingCompleted: false,
+};
+
 export async function createUserProfile(userId: string, data: Partial<UserProfile>) {
   const userRef = doc(db, COLLECTIONS.USERS, userId);
   await setDoc(userRef, {
-    height: 173,
-    currentWeight: 53,
-    targetWeight: 60,
-    startWeight: 53,
-    lactoseIntolerance: true,
+    ...DEFAULT_PROFILE,
+    ...data,
     startDate: Timestamp.now(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    ...data,
   });
 }
 
@@ -63,10 +101,28 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   return null;
 }
 
+export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  await updateDoc(userRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function updateUserWeight(userId: string, weight: number) {
   const userRef = doc(db, COLLECTIONS.USERS, userId);
   await updateDoc(userRef, {
     currentWeight: weight,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function completeOnboarding(userId: string, data: Partial<UserProfile>) {
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  await updateDoc(userRef, {
+    ...data,
+    onboardingCompleted: true,
+    startDate: Timestamp.now(),
     updatedAt: serverTimestamp(),
   });
 }
@@ -262,8 +318,8 @@ export async function getLastWorkoutRecord(
   const snapshot = await getDocs(q);
   if (snapshot.empty) return null;
 
-  const doc = snapshot.docs[0];
-  return { id: doc.id, ...doc.data() } as WorkoutRecord;
+  const docData = snapshot.docs[0];
+  return { id: docData.id, ...docData.data() } as WorkoutRecord;
 }
 
 // ============================================
@@ -285,7 +341,7 @@ export async function getMonthlyLogs(userId: string, year: number, month: number
   return allLogs.filter(log => log.date.startsWith(monthStr));
 }
 
-// 주간 기록 조회 (하위 호환성)
+// 주간 기록 조회
 export async function getWeeklyLogs(userId: string): Promise<DailyLog[]> {
   const logsRef = collection(db, COLLECTIONS.DAILY_LOGS);
   const q = query(
@@ -304,3 +360,48 @@ export async function getWeeklyLogs(userId: string): Promise<DailyLog[]> {
   return allLogs.filter(log => log.date >= weekAgoStr).sort((a, b) => b.date.localeCompare(a.date));
 }
 
+// ============================================
+// 주간 분석 데이터 생성
+// ============================================
+export interface WeeklyStats {
+  totalWorkouts: number;
+  totalMeals: number;
+  avgDietScore: number;
+  weightChange: number;
+  completionRate: number;
+  logs: DailyLog[];
+}
+
+export async function getWeeklyStats(userId: string): Promise<WeeklyStats> {
+  const logs = await getWeeklyLogs(userId);
+  const profile = await getUserProfile(userId);
+  
+  const totalWorkouts = logs.filter(log => log.completedExercises.length > 0).length;
+  const totalMeals = logs.reduce((sum, log) => sum + log.completedMeals.length, 0);
+  const avgDietScore = logs.length > 0 
+    ? logs.reduce((sum, log) => sum + log.dietScore, 0) / logs.length 
+    : 0;
+  
+  // 체중 변화 계산
+  const logsWithWeight = logs.filter(log => log.weightMeasured);
+  let weightChange = 0;
+  if (logsWithWeight.length >= 2) {
+    const sortedLogs = logsWithWeight.sort((a, b) => a.date.localeCompare(b.date));
+    const firstWeight = sortedLogs[0].weightMeasured!;
+    const lastWeight = sortedLogs[sortedLogs.length - 1].weightMeasured!;
+    weightChange = lastWeight - firstWeight;
+  }
+  
+  // 완료율 계산 (주 목표 일수 기준)
+  const targetDays = profile?.workoutDaysPerWeek || 5;
+  const completionRate = (totalWorkouts / targetDays) * 100;
+  
+  return {
+    totalWorkouts,
+    totalMeals,
+    avgDietScore,
+    weightChange,
+    completionRate: Math.min(completionRate, 100),
+    logs,
+  };
+}
