@@ -218,7 +218,7 @@ function Header({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          "먹는 것까지가 운동이다"
+          &ldquo;먹는 것까지가 운동이다&rdquo;
         </motion.p>
       </div>
       
@@ -289,7 +289,7 @@ function BottomNav() {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="flex justify-around items-center py-2 px-2">
-        {navItems.map((item, index) => (
+        {navItems.map((item) => (
           <motion.button 
             key={item.label}
             onClick={item.onClick}

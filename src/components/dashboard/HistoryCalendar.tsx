@@ -16,7 +16,7 @@ export default function HistoryCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -52,8 +52,8 @@ export default function HistoryCalendar() {
         completedMeals: completedMeals,
         workoutPart: '',
         completedExercises: completedExercises,
-        createdAt: null as any,
-        updatedAt: null as any,
+        createdAt: null as unknown as import('firebase/firestore').Timestamp,
+        updatedAt: null as unknown as import('firebase/firestore').Timestamp,
       } as DailyLog;
     }
     

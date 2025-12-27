@@ -295,8 +295,9 @@ export async function addWorkoutRecord(
   return { id: recordId, ...record };
 }
 
-// PR 체크
-async function checkIfPR(userId: string, exerciseName: string, weight: number, reps: number): Promise<boolean> {
+// PR 체크 (reps는 향후 확장을 위해 유지)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function checkIfPR(userId: string, exerciseName: string, weight: number, _reps: number): Promise<boolean> {
   const recordsRef = collection(db, COLLECTIONS.WORKOUT_RECORDS);
   const q = query(
     recordsRef,

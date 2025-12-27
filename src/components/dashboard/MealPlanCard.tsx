@@ -110,7 +110,6 @@ export default function MealPlanCard() {
             {mealTypes.map((type, index) => (
               <MealSlotRow
                 key={type}
-                type={type}
                 meal={todayMealPlan[type]}
                 info={MEAL_INFO[type]}
                 index={index}
@@ -180,7 +179,6 @@ export default function MealPlanCard() {
 }
 
 interface MealSlotRowProps {
-  type: MealType;
   meal: { name: string; detail: string; calories: number; emoji: string };
   info: { label: string; time: string; icon: string };
   index: number;
@@ -191,7 +189,6 @@ interface MealSlotRowProps {
 }
 
 function MealSlotRow({
-  type,
   meal,
   info,
   index,

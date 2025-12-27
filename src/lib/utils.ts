@@ -1,7 +1,7 @@
 import { PROJECT_START_DATE, WEEKLY_ROUTINE, WEEKLY_MEAL_PLAN, DayOfWeek, DAY_LABELS } from './constants';
 import type { DailyRoutine, DailyMealPlan } from './constants';
 import type { UserProfile } from '@/lib/firebase/firestore';
-import { matchProgramToUser, WORKOUT_PROGRAMS, DIET_PLANS, DailyWorkout, DailyMeal } from './programDatabase';
+import { matchProgramToUser } from './programDatabase';
 
 // D-Day 계산
 export function calculateDDay(startDate: Date = PROJECT_START_DATE): number {

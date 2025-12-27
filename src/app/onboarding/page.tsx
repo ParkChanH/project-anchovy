@@ -757,11 +757,3 @@ function OptionButton({ children, selected, onClick, gradient }: {
   );
 }
 
-function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <>
-      <div className="text-gray-500">{label}</div>
-      <div className={`text-right font-medium ${highlight ? 'text-[#C6FF00]' : 'text-white'}`}>{value}</div>
-    </>
-  );
-}

@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await signInWithPopup(auth, provider);
       
       // 기존 프로필 확인
-      let userProfile = await getUserProfile(result.user.uid);
+      const userProfile = await getUserProfile(result.user.uid);
       
       if (!userProfile) {
         // 새 사용자면 프로필 생성

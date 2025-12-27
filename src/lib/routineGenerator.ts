@@ -157,7 +157,7 @@ export function getTodayPersonalizedMealPlan(
   const hasLactoseIntolerance = profile?.lactoseIntolerance ?? false;
   
   // 유당불내증 시 식단 조정
-  let adjustedMealPlan = { ...baseMealPlan };
+  const adjustedMealPlan = { ...baseMealPlan };
   
   if (hasLactoseIntolerance) {
     // 우유 관련 항목 대체

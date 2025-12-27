@@ -115,8 +115,8 @@ export function useDailyLog() {
     workoutPart: '',
     completedExercises,
     weightMeasured,
-    createdAt: null as any,
-    updatedAt: null as any,
+    createdAt: null as unknown as import('firebase/firestore').Timestamp,
+    updatedAt: null as unknown as import('firebase/firestore').Timestamp,
   };
 
   return {
