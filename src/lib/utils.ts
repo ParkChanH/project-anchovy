@@ -105,8 +105,19 @@ export function detectLactose(text: string, keywords: string[]): boolean {
 }
 
 // 햅틱 피드백
-export function triggerHaptic(duration: number = 50): void {
+type HapticType = 'light' | 'medium' | 'heavy' | 'success' | 'error' | number;
+
+export function triggerHaptic(type: HapticType = 'light'): void {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    const durations: Record<string, number | number[]> = {
+      light: 10,
+      medium: 30,
+      heavy: 50,
+      success: [10, 50, 30], // 짧게-멈춤-길게
+      error: [50, 100, 50, 100, 50], // 반복 진동
+    };
+    
+    const duration = typeof type === 'number' ? type : durations[type] || 30;
     navigator.vibrate(duration);
   }
 }
