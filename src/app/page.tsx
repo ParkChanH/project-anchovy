@@ -126,27 +126,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 하단 네비게이션 */}
-      <BottomNav />
-
-      {/* AI 트레이너 플로팅 버튼 */}
-      <motion.button
-        onClick={() => setIsChatOpen(true)}
-        className="fixed bottom-24 right-4 z-40 w-16 h-16 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/30"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.5, type: "spring" }}
-      >
-        <motion.span 
-          className="text-3xl"
-          animate={{ rotate: [0, -10, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-        >
-          🤖
-        </motion.span>
-      </motion.button>
+      {/* 하단 네비게이션 with AI 버튼 */}
+      <BottomNav onAIClick={() => setIsChatOpen(true)} />
 
       {/* AI 트레이너 챗봇 */}
       <AITrainerChat 
@@ -265,7 +246,7 @@ function Header({
 }
 
 // 하단 네비게이션
-function BottomNav() {
+function BottomNav({ onAIClick }: { onAIClick: () => void }) {
   const router = useRouter();
   const { signOut } = useAuth();
 
@@ -274,12 +255,35 @@ function BottomNav() {
     router.push('/login');
   };
 
-  const navItems = [
-    { icon: '🏠', label: '홈', active: true, onClick: () => {} },
+  const leftItems = [
+    { icon: '🏠', label: '홈', active: true, onClick: () => router.push('/') },
     { icon: '📊', label: '리포트', active: false, onClick: () => router.push('/report') },
-    { icon: '⚙️', label: '설정', active: false, onClick: () => router.push('/onboarding') },
-    { icon: '🚪', label: '로그아웃', active: false, onClick: handleLogout, danger: true },
   ];
+
+  const rightItems = [
+    { icon: '⚙️', label: '설정', active: false, onClick: () => router.push('/onboarding') },
+    { icon: '🚪', label: '나가기', active: false, onClick: handleLogout, danger: true },
+  ];
+
+  const NavButton = ({ item }: { item: { icon: string; label: string; active: boolean; onClick: () => void; danger?: boolean } }) => (
+    <motion.button 
+      onClick={item.onClick}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      className={`
+        flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all
+        ${item.active 
+          ? 'text-[#C6FF00] bg-[#C6FF00]/10' 
+          : item.danger 
+            ? 'text-gray-500 hover:text-red-400' 
+            : 'text-gray-500 hover:text-white hover:bg-white/5'
+        }
+      `}
+    >
+      <span className="text-lg">{item.icon}</span>
+      <span className="text-[10px] font-semibold">{item.label}</span>
+    </motion.button>
+  );
 
   return (
     <motion.nav 
@@ -288,27 +292,36 @@ function BottomNav() {
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
-      <div className="flex justify-around items-center py-2 px-2">
-        {navItems.map((item) => (
-          <motion.button 
-            key={item.label}
-            onClick={item.onClick}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className={`
-              flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all
-              ${item.active 
-                ? 'text-[#C6FF00] bg-[#C6FF00]/10' 
-                : item.danger 
-                  ? 'text-gray-500 hover:text-red-400' 
-                  : 'text-gray-500 hover:text-white hover:bg-white/5'
-              }
-            `}
+      <div className="relative flex justify-between items-center py-2 px-4">
+        {/* 왼쪽 메뉴 */}
+        <div className="flex gap-2">
+          {leftItems.map((item) => (
+            <NavButton key={item.label} item={item} />
+          ))}
+        </div>
+
+        {/* 중앙 AI 버튼 */}
+        <motion.button
+          onClick={onAIClick}
+          className="absolute left-1/2 -translate-x-1/2 -top-6 w-14 h-14 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/40 border-4 border-[#0a0a0a]"
+          whileHover={{ scale: 1.1, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <motion.span 
+            className="text-2xl"
+            animate={{ rotate: [0, -10, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 1 }}
           >
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-[10px] font-semibold">{item.label}</span>
-          </motion.button>
-        ))}
+            🤖
+          </motion.span>
+        </motion.button>
+
+        {/* 오른쪽 메뉴 */}
+        <div className="flex gap-2">
+          {rightItems.map((item) => (
+            <NavButton key={item.label} item={item} />
+          ))}
+        </div>
       </div>
     </motion.nav>
   );
