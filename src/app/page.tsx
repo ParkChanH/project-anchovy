@@ -286,45 +286,43 @@ function BottomNav({ onAIClick }: { onAIClick: () => void }) {
   );
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 flex justify-center safe-bottom z-50 pointer-events-none">
-      <motion.nav 
-        className="w-full max-w-lg bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-2xl pointer-events-auto"
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        <div className="relative flex justify-between items-center py-2 px-4">
-          {/* 왼쪽 메뉴 */}
-          <div className="flex gap-1">
-            {leftItems.map((item) => (
-              <NavButton key={item.label} item={item} />
-            ))}
-          </div>
-
-          {/* 중앙 AI 버튼 */}
-          <motion.button
-            onClick={onAIClick}
-            className="absolute left-1/2 -translate-x-1/2 -top-6 w-14 h-14 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/40 border-4 border-[#0a0a0a]"
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <motion.span 
-              className="text-2xl"
-              animate={{ rotate: [0, -10, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-            >
-              🤖
-            </motion.span>
-          </motion.button>
-
-          {/* 오른쪽 메뉴 */}
-          <div className="flex gap-1">
-            {rightItems.map((item) => (
-              <NavButton key={item.label} item={item} />
-            ))}
-          </div>
+    <motion.nav 
+      className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-white/10 safe-bottom z-50"
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+    >
+      <div className="relative flex justify-between items-center py-2 px-4">
+        {/* 왼쪽 메뉴 */}
+        <div className="flex gap-1">
+          {leftItems.map((item) => (
+            <NavButton key={item.label} item={item} />
+          ))}
         </div>
-      </motion.nav>
-    </div>
+
+        {/* 중앙 AI 버튼 */}
+        <motion.button
+          onClick={onAIClick}
+          className="absolute left-1/2 -translate-x-1/2 -top-6 w-14 h-14 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/40 border-4 border-[#0a0a0a]"
+          whileHover={{ scale: 1.1, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <motion.span 
+            className="text-2xl"
+            animate={{ rotate: [0, -10, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+          >
+            🤖
+          </motion.span>
+        </motion.button>
+
+        {/* 오른쪽 메뉴 */}
+        <div className="flex gap-1">
+          {rightItems.map((item) => (
+            <NavButton key={item.label} item={item} />
+          ))}
+        </div>
+      </div>
+    </motion.nav>
   );
 }
