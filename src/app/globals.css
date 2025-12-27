@@ -1,12 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0f;
+  /* 기본 컬러 */
+  --background: #050508;
   --foreground: #ffffff;
-  --primary-green: #2E7D32;
-  --accent-lime: #C6FF00;
-  --card-bg: #1a1a2e;
-  --card-bg-alt: #16213e;
+  
+  /* 브랜드 컬러 */
+  --primary: #C6FF00;
+  --primary-dark: #9EF01A;
+  --accent: #70E000;
+  --secondary: #2E7D32;
+  
+  /* 카드 배경 */
+  --card-bg: rgba(255, 255, 255, 0.03);
+  --card-bg-solid: #0d0d12;
+  
+  /* 텍스트 컬러 */
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-dim: #52525b;
+  
+  /* 보더 */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
   
   /* iOS Safe Area */
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
@@ -18,8 +35,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-primary-green: var(--primary-green);
-  --color-accent-lime: var(--accent-lime);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
   --color-card-bg: var(--card-bg);
 }
 
@@ -30,20 +47,22 @@
 
 html {
   scroll-behavior: smooth;
+  font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Noto Sans KR', sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
-  /* 모바일에서 당겨서 새로고침 방지 */
   overscroll-behavior-y: contain;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
 }
 
 /* 배경 그라데이션 효과 */
@@ -55,16 +74,33 @@ body::before {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(46, 125, 50, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(198, 255, 0, 0.08), transparent);
+    radial-gradient(ellipse 100% 60% at 50% -20%, rgba(198, 255, 0, 0.08), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 100% 100%, rgba(112, 224, 0, 0.05), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 0% 80%, rgba(139, 92, 246, 0.05), transparent 50%);
   pointer-events: none;
   z-index: -1;
 }
 
+/* 타이포그래피 */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+
+/* 숫자 폰트 (tabular figures) */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
 /* 스크롤바 커스텀 */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -73,14 +109,14 @@ body::before {
 
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* 스크롤바 숨기기 (가로 스크롤용) */
+/* 스크롤바 숨기기 */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -93,15 +129,16 @@ body::before {
 /* 터치 최적화 */
 button, a, [role="button"] {
   touch-action: manipulation;
+  cursor: pointer;
 }
 
-/* 텍스트 선택 방지 (앱처럼) */
+/* 텍스트 선택 방지 */
 .no-select {
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Safe Area 패딩 */
+/* Safe Area */
 .safe-top {
   padding-top: var(--safe-area-inset-top);
 }
@@ -182,6 +219,15 @@ button, a, [role="button"] {
   }
 }
 
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
 /* 애니메이션 클래스 */
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
@@ -207,6 +253,11 @@ button, a, [role="button"] {
   animation: bounce-in 0.5s ease-out forwards;
 }
 
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
 /* 딜레이 클래스 */
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
@@ -216,15 +267,29 @@ button, a, [role="button"] {
 
 /* 글래스모피즘 효과 */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* 텍스트 그라데이션 */
 .text-gradient {
-  background: linear-gradient(135deg, #C6FF00 0%, #4CAF50 100%);
+  background: linear-gradient(135deg, #C6FF00 0%, #70E000 50%, #4CAF50 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-subtle {
+  background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -232,11 +297,97 @@ button, a, [role="button"] {
 
 /* 네온 효과 */
 .neon-lime {
-  text-shadow: 0 0 10px rgba(198, 255, 0, 0.5), 0 0 20px rgba(198, 255, 0, 0.3);
+  text-shadow: 
+    0 0 5px rgba(198, 255, 0, 0.5),
+    0 0 10px rgba(198, 255, 0, 0.3),
+    0 0 20px rgba(198, 255, 0, 0.2);
 }
 
 .neon-green {
-  text-shadow: 0 0 10px rgba(46, 125, 50, 0.5), 0 0 20px rgba(46, 125, 50, 0.3);
+  text-shadow: 
+    0 0 5px rgba(46, 125, 50, 0.5),
+    0 0 10px rgba(46, 125, 50, 0.3),
+    0 0 20px rgba(46, 125, 50, 0.2);
+}
+
+/* 글로우 박스 */
+.glow-lime {
+  box-shadow: 
+    0 0 20px rgba(198, 255, 0, 0.15),
+    0 0 40px rgba(198, 255, 0, 0.1),
+    inset 0 0 20px rgba(198, 255, 0, 0.05);
+}
+
+.glow-purple {
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.15),
+    0 0 40px rgba(139, 92, 246, 0.1);
+}
+
+/* 카드 호버 효과 */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* 버튼 스타일 */
+.btn-primary {
+  background: linear-gradient(135deg, #C6FF00, #9EF01A);
+  color: #000;
+  font-weight: 700;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(198, 255, 0, 0.25);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 30px rgba(198, 255, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 인풋 스타일 */
+.input-default {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.input-default::placeholder {
+  color: #71717a;
+}
+
+.input-default:focus {
+  outline: none;
+  border-color: rgba(198, 255, 0, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(198, 255, 0, 0.1);
 }
 
 /* 모바일 터치 피드백 */
@@ -248,7 +399,7 @@ button, a, [role="button"] {
   }
 }
 
-/* 모바일 폰트 크기 최적화 */
+/* 작은 화면 폰트 조정 */
 @media screen and (max-width: 375px) {
   html {
     font-size: 14px;
@@ -260,6 +411,37 @@ button, a, [role="button"] {
   body {
     max-width: 430px;
     margin: 0 auto;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    box-shadow: 
+      -50px 0 100px rgba(0, 0, 0, 0.5),
+      50px 0 100px rgba(0, 0, 0, 0.5);
   }
+  
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, #000 0%, transparent 10%, transparent 90%, #000 100%);
+    pointer-events: none;
+    z-index: 9999;
+  }
+}
+
+/* 포커스 스타일 개선 */
+:focus-visible {
+  outline: 2px solid #C6FF00;
+  outline-offset: 2px;
+}
+
+/* 선택 영역 스타일 */
+::selection {
+  background: rgba(198, 255, 0, 0.3);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(198, 255, 0, 0.3);
+  color: #fff;
 }
