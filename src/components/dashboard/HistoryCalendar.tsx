@@ -82,40 +82,40 @@ export default function HistoryCalendar() {
       <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-purple-600/5 to-fuchsia-600/10" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
       
-      <div className="relative p-5">
+      <div className="relative p-3 sm:p-5">
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between mb-3 sm:mb-5">
+          <div className="flex items-center gap-2 sm:gap-4">
             <motion.div 
-              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30"
+              className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30"
               whileHover={{ scale: 1.1, rotate: 5 }}
             >
-              <span className="text-2xl">📅</span>
+              <span className="text-lg sm:text-2xl">📅</span>
             </motion.div>
             <div>
-              <h3 className="text-xl font-bold text-white">기록 캘린더</h3>
-              <p className="text-gray-400 text-sm">지난 기록 확인</p>
+              <h3 className="text-base sm:text-xl font-bold text-white">기록 캘린더</h3>
+              <p className="text-gray-400 text-[10px] sm:text-sm">지난 기록 확인</p>
             </div>
           </div>
           
           {/* 월 네비게이션 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <motion.button
               onClick={prevMonth}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white"
+              className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white text-sm sm:text-base"
             >
               ←
             </motion.button>
-            <span className="text-white font-bold min-w-[100px] text-center text-lg">
+            <span className="text-white font-bold min-w-[70px] sm:min-w-[100px] text-center text-xs sm:text-lg">
               {format(currentMonth, 'yyyy.MM', { locale: ko })}
             </span>
             <motion.button
               onClick={nextMonth}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white"
+              className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white text-sm sm:text-base"
             >
               →
             </motion.button>
@@ -123,11 +123,11 @@ export default function HistoryCalendar() {
         </div>
 
         {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 gap-1 mb-3">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2 sm:mb-3">
           {WEEKDAYS.map((day, i) => (
             <div 
               key={day} 
-              className={`text-center text-xs font-bold py-2 rounded-lg ${
+              className={`text-center text-[10px] sm:text-xs font-bold py-1 sm:py-2 rounded-md sm:rounded-lg ${
                 i === 0 ? 'text-red-400 bg-red-500/10' : 
                 i === 6 ? 'text-blue-400 bg-blue-500/10' : 
                 'text-gray-400 bg-white/5'
@@ -139,7 +139,7 @@ export default function HistoryCalendar() {
         </div>
 
         {/* 날짜 그리드 */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {paddingDays.map((_, i) => (
             <div key={`pad-${i}`} className="aspect-square" />
           ))}
@@ -159,18 +159,18 @@ export default function HistoryCalendar() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.01 }}
                 onClick={() => setSelectedDate(isSelected ? null : day)}
-                whileHover={{ scale: 1.1 }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className={`
-                  aspect-square rounded-xl flex flex-col items-center justify-center
-                  transition-all duration-200 relative backdrop-blur
-                  ${isToday(day) ? 'ring-2 ring-[#C6FF00] shadow-lg shadow-[#C6FF00]/20' : ''}
+                  aspect-square rounded-lg sm:rounded-xl flex flex-col items-center justify-center
+                  transition-all duration-200 relative backdrop-blur min-w-0
+                  ${isToday(day) ? 'ring-1 sm:ring-2 ring-[#C6FF00] shadow-lg shadow-[#C6FF00]/20' : ''}
                   ${isSelected ? 'bg-violet-500/40 scale-105' : 'hover:bg-white/10'}
                   ${isPerfect ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20' : ''}
                   ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}
                 `}
               >
-                <span className={`text-sm font-medium ${
+                <span className={`text-[11px] sm:text-sm font-medium leading-none ${
                   isToday(day) ? 'text-[#C6FF00] font-bold' : 
                   isPerfect ? 'text-yellow-300' :
                   'text-white'
@@ -179,17 +179,17 @@ export default function HistoryCalendar() {
                 </span>
                 
                 {hasLog && (
-                  <div className="flex gap-0.5 mt-1">
+                  <div className="flex gap-0.5 mt-0.5 sm:mt-1">
                     {mealScore >= 3 && (
                       <motion.span 
-                        className="w-1.5 h-1.5 rounded-full bg-orange-400"
+                        className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-orange-400"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                       />
                     )}
                     {exerciseCount >= 3 && (
                       <motion.span 
-                        className="w-1.5 h-1.5 rounded-full bg-green-400"
+                        className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-400"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                       />
@@ -199,7 +199,7 @@ export default function HistoryCalendar() {
                 
                 {isPerfect && (
                   <motion.span 
-                    className="absolute -top-1 -right-1 text-xs"
+                    className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 text-[8px] sm:text-xs"
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
                   >
@@ -285,18 +285,18 @@ export default function HistoryCalendar() {
         </AnimatePresence>
 
         {/* 범례 */}
-        <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-white/10">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-orange-400" />
-            <span className="text-gray-400 text-xs font-medium">식단 3끼+</span>
+        <div className="flex items-center justify-center gap-3 sm:gap-6 mt-3 sm:mt-5 pt-3 sm:pt-4 border-t border-white/10 flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-orange-400" />
+            <span className="text-gray-400 text-[9px] sm:text-xs font-medium whitespace-nowrap">식단 3끼+</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-green-400" />
-            <span className="text-gray-400 text-xs font-medium">운동 3개+</span>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-400" />
+            <span className="text-gray-400 text-[9px] sm:text-xs font-medium whitespace-nowrap">운동 3개+</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm">⭐</span>
-            <span className="text-gray-400 text-xs font-medium">완벽한 날</span>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="text-[10px] sm:text-sm">⭐</span>
+            <span className="text-gray-400 text-[9px] sm:text-xs font-medium whitespace-nowrap">완벽한 날</span>
           </div>
         </div>
       </div>
