@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { calculateDDay, getTodayLabel } from '@/lib/utils';
 import { GOALS } from '@/lib/constants';
@@ -19,13 +20,11 @@ export default function Home() {
   // 인증 및 온보딩 체크
   useEffect(() => {
     if (!loading && !isOffline) {
-      // 로그인하지 않은 사용자 → 로그인 페이지
       if (!user) {
         router.push('/login');
         return;
       }
       
-      // 온보딩 미완료 사용자 → 온보딩 페이지
       if (profile && !profile.onboardingCompleted) {
         router.push('/onboarding');
         return;
@@ -36,30 +35,61 @@ export default function Home() {
   // 로딩 화면
   if (loading) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-dvh">
-        <div className="text-4xl mb-4 animate-bounce">🐟</div>
-        <p className="text-gray-400">로딩 중...</p>
+      <main className="flex flex-col items-center justify-center min-h-dvh bg-[#0a0a0a]">
+        <motion.div 
+          className="text-6xl mb-4"
+          animate={{ 
+            y: [0, -20, 0],
+            rotate: [0, 10, -10, 0]
+          }}
+          transition={{ 
+            duration: 1.5, 
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          🐟
+        </motion.div>
+        <motion.p 
+          className="text-gray-400 font-medium"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
+          로딩 중...
+        </motion.p>
       </main>
     );
   }
 
-  // 현재 체중 (DB에서 가져오거나 기본값)
   const currentWeight = profile?.currentWeight ?? GOALS.startWeight;
 
   return (
-    <main className="flex flex-col min-h-dvh safe-top safe-bottom">
+    <main className="flex flex-col min-h-dvh bg-[#0a0a0a] safe-top safe-bottom">
+      {/* 배경 장식 */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#C6FF00]/5 rounded-full blur-[100px]" />
+        <div className="absolute top-1/3 -left-40 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-40 right-1/4 w-80 h-80 bg-blue-500/5 rounded-full blur-[100px]" />
+      </div>
+
       {/* 오프라인 알림 배너 */}
-      {isOffline && (
-        <div className="bg-yellow-500/20 border-b border-yellow-500/30 px-4 py-2 text-center">
-          <p className="text-yellow-400 text-xs">
-            ⚠️ 오프라인 모드 - 데이터가 저장되지 않습니다. 
-            <span className="text-yellow-500 ml-1">Firebase 설정을 완료하세요.</span>
-          </p>
-        </div>
-      )}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="relative z-10 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-b border-yellow-500/30 px-4 py-3"
+          >
+            <p className="text-yellow-400 text-sm text-center font-medium">
+              ⚠️ 오프라인 모드 - 데이터가 저장되지 않습니다
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 스크롤 영역 */}
-      <div className="flex-1 overflow-y-auto px-4 pb-24">
+      <div className="flex-1 overflow-y-auto px-4 pb-24 relative z-10">
         {/* 헤더 */}
         <Header 
           dDay={dDay} 
@@ -70,7 +100,7 @@ export default function Home() {
         />
         
         {/* 체중 진행률 카드 */}
-        <div className="mb-4">
+        <div className="mb-5">
           <ProgressCard 
             currentWeight={currentWeight}
             targetWeight={profile?.targetWeight ?? GOALS.targetWeight}
@@ -79,12 +109,12 @@ export default function Home() {
         </div>
 
         {/* 오늘의 식단 카드 */}
-        <div className="mb-4">
+        <div className="mb-5">
           <MealPlanCard />
         </div>
 
         {/* 오늘의 운동 카드 */}
-        <div className="mb-4">
+        <div className="mb-5">
           <WorkoutCard />
         </div>
 
@@ -121,52 +151,89 @@ function Header({
   });
 
   return (
-    <header className="flex justify-between items-start pt-4 pb-5 animate-fade-in">
+    <motion.header 
+      className="flex justify-between items-start pt-6 pb-6"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div>
-        <p className="text-gray-500 text-sm mb-0.5">{formattedDate} {todayLabel}</p>
-        <h1 className="text-xl font-extrabold">
+        <motion.p 
+          className="text-gray-500 text-sm mb-1 font-medium"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          {formattedDate} {todayLabel}
+        </motion.p>
+        <motion.h1 
+          className="text-2xl font-black"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
           {nickname ? (
             <>
               <span className="text-white">안녕,</span>
-              <span className="text-gradient neon-lime ml-1">{nickname}</span>
-              <span className="text-white">! 💪</span>
+              <span className="bg-gradient-to-r from-[#C6FF00] to-[#9EF01A] bg-clip-text text-transparent ml-1">{nickname}</span>
+              <span className="text-white ml-1">! 💪</span>
             </>
           ) : (
             <>
-              <span className="text-gradient neon-lime">Project</span>
-              <span className="text-white ml-1.5">Anchovy</span>
+              <span className="bg-gradient-to-r from-[#C6FF00] to-[#9EF01A] bg-clip-text text-transparent">Project</span>
+              <span className="text-white ml-2">Anchovy</span>
             </>
           )}
-        </h1>
-        <p className="text-gray-500 text-xs mt-1 italic">
+        </motion.h1>
+        <motion.p 
+          className="text-gray-600 text-xs mt-1.5 italic"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
           "먹는 것까지가 운동이다"
-        </p>
+        </motion.p>
       </div>
       
-      <div className="flex flex-col items-end gap-1.5">
-        {/* D-Day 배지 (클릭하면 리포트로) */}
-        <button onClick={onProfileClick} className="relative group">
-          <div className="absolute inset-0 bg-[#C6FF00]/20 rounded-full blur-md group-hover:blur-lg transition-all" />
-          <div className="relative px-3 py-1.5 rounded-full bg-gradient-to-r from-[#2E7D32]/30 to-[#1a472a]/30 border border-[#2E7D32]/50 group-hover:border-[#C6FF00]/50 transition-colors">
-            <span className="text-[#C6FF00] font-black text-sm tracking-tight">D+{dDay}</span>
+      <motion.div 
+        className="flex flex-col items-end gap-2"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        {/* D-Day 배지 */}
+        <motion.button 
+          onClick={onProfileClick} 
+          className="relative group"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <div className="absolute inset-0 bg-[#C6FF00]/30 rounded-2xl blur-lg group-hover:blur-xl transition-all" />
+          <div className="relative px-4 py-2 rounded-2xl bg-gradient-to-r from-[#2E7D32]/40 to-[#1a472a]/40 border border-[#2E7D32]/50 group-hover:border-[#C6FF00]/70 transition-colors backdrop-blur">
+            <span className="text-[#C6FF00] font-black text-lg tracking-tight">D+{dDay}</span>
           </div>
-        </button>
+        </motion.button>
         
         {/* 상태 표시 */}
-        <div className="flex items-center gap-1 text-[10px]">
+        <div className="flex items-center gap-1.5 text-sm">
           {isOffline ? (
-            <span className="text-yellow-500">⚠️ 오프라인</span>
+            <span className="text-yellow-500 font-medium">⚠️ 오프라인</span>
           ) : (
-            <>
-              <span className="text-gray-600">🐟</span>
+            <motion.div 
+              className="flex items-center gap-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <span>🐟</span>
               <span className="text-gray-600">→</span>
-              <span className="text-gray-600 opacity-40">🐠</span>
-              <span className="text-gray-600 opacity-20">🦈</span>
-            </>
+              <span className="opacity-50">🐠</span>
+              <span className="opacity-25">🦈</span>
+            </motion.div>
           )}
         </div>
-      </div>
-    </header>
+      </motion.div>
+    </motion.header>
   );
 }
 
@@ -180,40 +247,42 @@ function BottomNav() {
     router.push('/login');
   };
 
+  const navItems = [
+    { icon: '🏠', label: '홈', active: true, onClick: () => {} },
+    { icon: '📊', label: '리포트', active: false, onClick: () => router.push('/report') },
+    { icon: '⚙️', label: '설정', active: false, onClick: () => router.push('/onboarding') },
+    { icon: '🚪', label: '로그아웃', active: false, onClick: handleLogout, danger: true },
+  ];
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[var(--card-bg)]/95 backdrop-blur-lg border-t border-gray-800 safe-bottom">
-      <div className="flex justify-around items-center py-2">
-        <button 
-          className="flex flex-col items-center gap-1 px-6 py-2 text-[var(--primary)]"
-        >
-          <span className="text-xl">🏠</span>
-          <span className="text-[10px] font-medium">홈</span>
-        </button>
-        
-        <button 
-          onClick={() => router.push('/report')}
-          className="flex flex-col items-center gap-1 px-6 py-2 text-gray-500 hover:text-white transition-colors"
-        >
-          <span className="text-xl">📊</span>
-          <span className="text-[10px] font-medium">리포트</span>
-        </button>
-        
-        <button 
-          onClick={() => router.push('/onboarding')}
-          className="flex flex-col items-center gap-1 px-6 py-2 text-gray-500 hover:text-white transition-colors"
-        >
-          <span className="text-xl">⚙️</span>
-          <span className="text-[10px] font-medium">설정</span>
-        </button>
-        
-        <button 
-          onClick={handleLogout}
-          className="flex flex-col items-center gap-1 px-6 py-2 text-gray-500 hover:text-red-400 transition-colors"
-        >
-          <span className="text-xl">🚪</span>
-          <span className="text-[10px] font-medium">로그아웃</span>
-        </button>
+    <motion.nav 
+      className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-white/10 safe-bottom z-50"
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+    >
+      <div className="flex justify-around items-center py-2 px-2">
+        {navItems.map((item, index) => (
+          <motion.button 
+            key={item.label}
+            onClick={item.onClick}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className={`
+              flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all
+              ${item.active 
+                ? 'text-[#C6FF00] bg-[#C6FF00]/10' 
+                : item.danger 
+                  ? 'text-gray-500 hover:text-red-400' 
+                  : 'text-gray-500 hover:text-white hover:bg-white/5'
+              }
+            `}
+          >
+            <span className="text-xl">{item.icon}</span>
+            <span className="text-[10px] font-semibold">{item.label}</span>
+          </motion.button>
+        ))}
       </div>
-    </nav>
+    </motion.nav>
   );
 }

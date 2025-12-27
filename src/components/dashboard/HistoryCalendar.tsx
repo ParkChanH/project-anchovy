@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, subMonths, addMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useAuth } from '@/context/AuthContext';
@@ -11,13 +12,12 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function HistoryCalendar() {
   const { user, isOffline } = useAuth();
-  const { completedMeals, completedExercises } = useDailyLog(); // 오늘 기록
+  const { completedMeals, completedExercises } = useDailyLog();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 기록 불러오기 (월별)
   useEffect(() => {
     const fetchLogs = async () => {
       if (!user || isOffline) return;
@@ -40,11 +40,9 @@ export default function HistoryCalendar() {
     fetchLogs();
   }, [user, isOffline, currentMonth]);
 
-  // 해당 날짜의 기록 찾기
   const getLogForDate = (date: Date): DailyLog | undefined => {
     const dateStr = format(date, 'yyyy-MM-dd');
     
-    // 오늘이면 실시간 데이터 사용
     if (isToday(date)) {
       return {
         id: 'today',
@@ -62,170 +60,246 @@ export default function HistoryCalendar() {
     return logs.find(log => log.date === dateStr);
   };
 
-  // 달력 날짜 생성
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  
-  // 첫 주 시작 요일까지 빈 칸 추가
   const startDay = monthStart.getDay();
   const paddingDays = Array(startDay).fill(null);
 
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
-  // 선택된 날짜의 기록
   const selectedLog = selectedDate ? getLogForDate(selectedDate) : null;
 
   return (
-    <section className="bg-gradient-to-br from-[#1e1e1e] to-[#252525] p-5 rounded-3xl border border-white/5 shadow-xl animate-slide-up">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-10 rounded-full bg-purple-500" />
-          <div>
-            <h3 className="text-lg font-bold text-white">기록 캘린더</h3>
-            <p className="text-gray-400 text-sm">지난 기록 확인</p>
-          </div>
-        </div>
-        
-        {/* 월 네비게이션 */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={prevMonth}
-            className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-          >
-            ←
-          </button>
-          <span className="text-white font-medium min-w-[80px] text-center">
-            {format(currentMonth, 'yyyy.MM', { locale: ko })}
-          </span>
-          <button
-            onClick={nextMonth}
-            className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-          >
-            →
-          </button>
-        </div>
-      </div>
-
-      {/* 요일 헤더 */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {WEEKDAYS.map((day, i) => (
-          <div 
-            key={day} 
-            className={`text-center text-xs font-medium py-2 ${
-              i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-500'
-            }`}
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-
-      {/* 날짜 그리드 */}
-      <div className="grid grid-cols-7 gap-1">
-        {/* 빈 칸 */}
-        {paddingDays.map((_, i) => (
-          <div key={`pad-${i}`} className="aspect-square" />
-        ))}
-        
-        {/* 날짜 */}
-        {days.map((day) => {
-          const log = getLogForDate(day);
-          const isSelected = selectedDate && isSameDay(day, selectedDate);
-          const hasLog = log && (log.completedMeals.length > 0 || log.completedExercises.length > 0);
-          const mealScore = log?.completedMeals.length || 0;
-          const exerciseCount = log?.completedExercises.length || 0;
-          
-          return (
-            <button
-              key={day.toISOString()}
-              onClick={() => setSelectedDate(isSelected ? null : day)}
-              className={`
-                aspect-square rounded-lg flex flex-col items-center justify-center
-                transition-all duration-200 relative
-                ${isToday(day) ? 'ring-2 ring-[#C6FF00]' : ''}
-                ${isSelected ? 'bg-purple-500/30 scale-105' : 'hover:bg-white/10'}
-                ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}
-              `}
+    <motion.section 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.3 }}
+      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
+    >
+      {/* 배경 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-purple-600/5 to-fuchsia-600/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+      
+      <div className="relative p-5">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-4">
+            <motion.div 
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30"
+              whileHover={{ scale: 1.1, rotate: 5 }}
             >
-              <span className={`text-sm ${isToday(day) ? 'text-[#C6FF00] font-bold' : 'text-white'}`}>
-                {format(day, 'd')}
-              </span>
-              
-              {/* 기록 표시 */}
-              {hasLog && (
-                <div className="flex gap-0.5 mt-0.5">
-                  {mealScore >= 3 && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
-                  {exerciseCount >= 3 && <span className="w-1.5 h-1.5 rounded-full bg-green-500" />}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 선택된 날짜 상세 */}
-      {selectedDate && (
-        <div className="mt-4 p-4 bg-white/5 rounded-xl animate-fade-in">
-          <p className="text-white font-medium mb-2">
-            {format(selectedDate, 'M월 d일 (EEEE)', { locale: ko })}
-          </p>
+              <span className="text-2xl">📅</span>
+            </motion.div>
+            <div>
+              <h3 className="text-xl font-bold text-white">기록 캘린더</h3>
+              <p className="text-gray-400 text-sm">지난 기록 확인</p>
+            </div>
+          </div>
           
-          {selectedLog ? (
-            <div className="space-y-2">
-              {/* 식단 */}
-              <div className="flex items-center gap-2">
-                <span className="text-orange-400">🍽️</span>
-                <span className="text-gray-400 text-sm">
-                  식단 {selectedLog.completedMeals.length}/5 완료
+          {/* 월 네비게이션 */}
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={prevMonth}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white"
+            >
+              ←
+            </motion.button>
+            <span className="text-white font-bold min-w-[100px] text-center text-lg">
+              {format(currentMonth, 'yyyy.MM', { locale: ko })}
+            </span>
+            <motion.button
+              onClick={nextMonth}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-white"
+            >
+              →
+            </motion.button>
+          </div>
+        </div>
+
+        {/* 요일 헤더 */}
+        <div className="grid grid-cols-7 gap-1 mb-3">
+          {WEEKDAYS.map((day, i) => (
+            <div 
+              key={day} 
+              className={`text-center text-xs font-bold py-2 rounded-lg ${
+                i === 0 ? 'text-red-400 bg-red-500/10' : 
+                i === 6 ? 'text-blue-400 bg-blue-500/10' : 
+                'text-gray-400 bg-white/5'
+              }`}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* 날짜 그리드 */}
+        <div className="grid grid-cols-7 gap-1">
+          {paddingDays.map((_, i) => (
+            <div key={`pad-${i}`} className="aspect-square" />
+          ))}
+          
+          {days.map((day, index) => {
+            const log = getLogForDate(day);
+            const isSelected = selectedDate && isSameDay(day, selectedDate);
+            const hasLog = log && (log.completedMeals.length > 0 || log.completedExercises.length > 0);
+            const mealScore = log?.completedMeals.length || 0;
+            const exerciseCount = log?.completedExercises.length || 0;
+            const isPerfect = mealScore >= 4 && exerciseCount >= 3;
+            
+            return (
+              <motion.button
+                key={day.toISOString()}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.01 }}
+                onClick={() => setSelectedDate(isSelected ? null : day)}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className={`
+                  aspect-square rounded-xl flex flex-col items-center justify-center
+                  transition-all duration-200 relative backdrop-blur
+                  ${isToday(day) ? 'ring-2 ring-[#C6FF00] shadow-lg shadow-[#C6FF00]/20' : ''}
+                  ${isSelected ? 'bg-violet-500/40 scale-105' : 'hover:bg-white/10'}
+                  ${isPerfect ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20' : ''}
+                  ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}
+                `}
+              >
+                <span className={`text-sm font-medium ${
+                  isToday(day) ? 'text-[#C6FF00] font-bold' : 
+                  isPerfect ? 'text-yellow-300' :
+                  'text-white'
+                }`}>
+                  {format(day, 'd')}
                 </span>
-                {selectedLog.completedMeals.length >= 4 && (
-                  <span className="text-green-400 text-xs">✓ 훌륭해요!</span>
+                
+                {hasLog && (
+                  <div className="flex gap-0.5 mt-1">
+                    {mealScore >= 3 && (
+                      <motion.span 
+                        className="w-1.5 h-1.5 rounded-full bg-orange-400"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                      />
+                    )}
+                    {exerciseCount >= 3 && (
+                      <motion.span 
+                        className="w-1.5 h-1.5 rounded-full bg-green-400"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                      />
+                    )}
+                  </div>
+                )}
+                
+                {isPerfect && (
+                  <motion.span 
+                    className="absolute -top-1 -right-1 text-xs"
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+                  >
+                    ⭐
+                  </motion.span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* 선택된 날짜 상세 */}
+        <AnimatePresence>
+          {selectedDate && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 overflow-hidden"
+            >
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur">
+                <p className="text-white font-bold mb-3 text-lg">
+                  {format(selectedDate, 'M월 d일 (EEEE)', { locale: ko })}
+                </p>
+                
+                {selectedLog ? (
+                  <div className="space-y-3">
+                    <motion.div 
+                      className="flex items-center gap-3 p-3 bg-orange-500/10 rounded-xl"
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                    >
+                      <span className="text-2xl">🍽️</span>
+                      <div className="flex-1">
+                        <p className="text-orange-300 font-medium">식단</p>
+                        <p className="text-gray-400 text-sm">
+                          {selectedLog.completedMeals.length}/5 완료
+                        </p>
+                      </div>
+                      {selectedLog.completedMeals.length >= 4 && (
+                        <span className="text-green-400 text-sm font-medium">✓ 훌륭!</span>
+                      )}
+                    </motion.div>
+                    
+                    <motion.div 
+                      className="flex items-center gap-3 p-3 bg-green-500/10 rounded-xl"
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <span className="text-2xl">💪</span>
+                      <div className="flex-1">
+                        <p className="text-green-300 font-medium">운동</p>
+                        <p className="text-gray-400 text-sm">
+                          {selectedLog.completedExercises.length}개 완료
+                        </p>
+                      </div>
+                    </motion.div>
+                    
+                    {selectedLog.weightMeasured && (
+                      <motion.div 
+                        className="flex items-center gap-3 p-3 bg-blue-500/10 rounded-xl"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        <span className="text-2xl">⚖️</span>
+                        <div className="flex-1">
+                          <p className="text-blue-300 font-medium">체중</p>
+                          <p className="text-gray-400 text-sm">
+                            {selectedLog.weightMeasured}kg
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm text-center py-4">📭 기록이 없습니다</p>
                 )}
               </div>
-              
-              {/* 운동 */}
-              <div className="flex items-center gap-2">
-                <span className="text-green-400">💪</span>
-                <span className="text-gray-400 text-sm">
-                  운동 {selectedLog.completedExercises.length}개 완료
-                </span>
-              </div>
-              
-              {/* 체중 */}
-              {selectedLog.weightMeasured && (
-                <div className="flex items-center gap-2">
-                  <span className="text-blue-400">⚖️</span>
-                  <span className="text-gray-400 text-sm">
-                    체중 {selectedLog.weightMeasured}kg
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">기록이 없습니다</p>
+            </motion.div>
           )}
-        </div>
-      )}
+        </AnimatePresence>
 
-      {/* 범례 */}
-      <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-white/5">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-orange-500" />
-          <span className="text-gray-500 text-xs">식단 3끼+</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-gray-500 text-xs">운동 3개+</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#C6FF00]" />
-          <span className="text-gray-500 text-xs">오늘</span>
+        {/* 범례 */}
+        <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-white/10">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-orange-400" />
+            <span className="text-gray-400 text-xs font-medium">식단 3끼+</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-green-400" />
+            <span className="text-gray-400 text-xs font-medium">운동 3개+</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">⭐</span>
+            <span className="text-gray-400 text-xs font-medium">완벽한 날</span>
+          </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
-
