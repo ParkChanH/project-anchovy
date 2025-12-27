@@ -255,35 +255,13 @@ function BottomNav({ onAIClick }: { onAIClick: () => void }) {
     router.push('/login');
   };
 
-  const leftItems = [
+  const navItems = [
     { icon: '🏠', label: '홈', active: true, onClick: () => router.push('/') },
     { icon: '📊', label: '리포트', active: false, onClick: () => router.push('/report') },
-  ];
-
-  const rightItems = [
+    { icon: 'ai', label: 'AI', active: false, onClick: onAIClick, isAI: true },
     { icon: '⚙️', label: '설정', active: false, onClick: () => router.push('/onboarding') },
     { icon: '🚪', label: '나가기', active: false, onClick: handleLogout, danger: true },
   ];
-
-  const NavButton = ({ item }: { item: { icon: string; label: string; active: boolean; onClick: () => void; danger?: boolean } }) => (
-    <motion.button 
-      onClick={item.onClick}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      className={`
-        flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all
-        ${item.active 
-          ? 'text-[#C6FF00] bg-[#C6FF00]/10' 
-          : item.danger 
-            ? 'text-gray-500 hover:text-red-400' 
-            : 'text-gray-500 hover:text-white hover:bg-white/5'
-        }
-      `}
-    >
-      <span className="text-lg">{item.icon}</span>
-      <span className="text-[10px] font-semibold">{item.label}</span>
-    </motion.button>
-  );
 
   return (
     <motion.nav 
@@ -292,36 +270,45 @@ function BottomNav({ onAIClick }: { onAIClick: () => void }) {
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
-      <div className="relative flex justify-between items-center py-2 px-4">
-        {/* 왼쪽 메뉴 */}
-        <div className="flex gap-1">
-          {leftItems.map((item) => (
-            <NavButton key={item.label} item={item} />
-          ))}
-        </div>
-
-        {/* 중앙 AI 버튼 */}
-        <motion.button
-          onClick={onAIClick}
-          className="absolute left-1/2 -translate-x-1/2 -top-6 w-14 h-14 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/40 border-4 border-[#0a0a0a]"
-          whileHover={{ scale: 1.1, y: -2 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <motion.span 
-            className="text-2xl"
-            animate={{ rotate: [0, -10, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-          >
-            🤖
-          </motion.span>
-        </motion.button>
-
-        {/* 오른쪽 메뉴 */}
-        <div className="flex gap-1">
-          {rightItems.map((item) => (
-            <NavButton key={item.label} item={item} />
-          ))}
-        </div>
+      <div className="grid grid-cols-5 py-1 px-2">
+        {navItems.map((item) => (
+          item.isAI ? (
+            <div key={item.label} className="flex justify-center">
+              <motion.button
+                onClick={item.onClick}
+                className="relative -mt-8 w-14 h-14 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/40 border-4 border-[#0a0a0a]"
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <motion.span 
+                  className="text-2xl"
+                  animate={{ rotate: [0, -10, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                >
+                  🤖
+                </motion.span>
+              </motion.button>
+            </div>
+          ) : (
+            <motion.button 
+              key={item.label}
+              onClick={item.onClick}
+              whileTap={{ scale: 0.9 }}
+              className={`
+                flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl transition-all min-h-[52px]
+                ${item.active 
+                  ? 'text-[#C6FF00]' 
+                  : item.danger 
+                    ? 'text-gray-500 active:text-red-400' 
+                    : 'text-gray-500 active:text-white'
+                }
+              `}
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </motion.button>
+          )
+        ))}
       </div>
     </motion.nav>
   );
