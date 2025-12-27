@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { getInitialGreeting, getQuickReplies, ChatMessage } from '@/lib/ai/deepseek';
+import { getInitialGreeting, getQuickReplies, ChatMessage, AIAction } from '@/lib/ai/deepseek';
 import { getMonthlyLogs } from '@/lib/firebase/firestore';
 
 interface Message {
@@ -11,6 +11,8 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  actions?: AIAction[];
+  actionExecuted?: boolean;
 }
 
 interface AITrainerChatProps {
@@ -19,27 +21,42 @@ interface AITrainerChatProps {
 }
 
 export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [executingAction, setExecutingAction] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 초기화
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      const greeting = getInitialGreeting(profile);
-      setMessages([{
-        id: 'greeting',
-        role: 'assistant',
-        content: greeting,
-        timestamp: new Date(),
-      }]);
-      setQuickReplies(getQuickReplies('greeting'));
-    }
-  }, [isOpen, profile, messages.length]);
+    const initChat = async () => {
+      if (isOpen && messages.length === 0) {
+        let recentLogs: Awaited<ReturnType<typeof getMonthlyLogs>> = [];
+        if (user) {
+          try {
+            const now = new Date();
+            recentLogs = await getMonthlyLogs(user.uid, now.getFullYear(), now.getMonth() + 1);
+          } catch (e) {
+            console.error('로그 가져오기 실패:', e);
+          }
+        }
+        
+        const greeting = getInitialGreeting(profile, recentLogs);
+        setMessages([{
+          id: 'greeting',
+          role: 'assistant',
+          content: greeting,
+          timestamp: new Date(),
+        }]);
+        setQuickReplies(getQuickReplies('greeting'));
+      }
+    };
+    
+    initChat();
+  }, [isOpen, profile, user, messages.length]);
 
   // 스크롤 자동 이동
   useEffect(() => {
@@ -107,11 +124,14 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
           role: 'assistant',
           content: data.message,
           timestamp: new Date(),
+          actions: data.actions,
         };
         setMessages(prev => [...prev, aiMessage]);
         
         // 컨텍스트에 따른 빠른 응답 제안
-        if (content.includes('운동') || content.includes('웨이트')) {
+        if (data.actions && data.actions.length > 0) {
+          setQuickReplies(getQuickReplies('analysis'));
+        } else if (content.includes('운동') || content.includes('웨이트')) {
           setQuickReplies(getQuickReplies('workout'));
         } else if (content.includes('식단') || content.includes('먹') || content.includes('음식')) {
           setQuickReplies(getQuickReplies('diet'));
@@ -138,6 +158,67 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 액션 실행
+  const executeAction = async (action: AIAction, messageId: string) => {
+    if (!user || executingAction) return;
+    
+    setExecutingAction(action.type);
+    
+    try {
+      const response = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          actionType: action.type,
+          data: action.data,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 메시지에 액션 실행 완료 표시
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, actionExecuted: true }
+            : msg
+        ));
+
+        // 성공 메시지 추가
+        const successMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `✅ ${result.message}\n\n변경사항이 적용되었어요! 새로고침하면 대시보드에 반영됩니다.`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, successMessage]);
+
+        // 프로필 새로고침
+        await refreshProfile();
+      } else {
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `❌ 변경에 실패했어요: ${result.error}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('액션 실행 실패:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '❌ 네트워크 오류가 발생했어요. 다시 시도해주세요.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setExecutingAction(null);
     }
   };
 
@@ -187,7 +268,7 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
                     animate={{ opacity: [1, 0.5, 1] }}
                     transition={{ duration: 1, repeat: Infinity }}
                   />
-                  온라인
+                  기록 분석 & 계획 수립
                 </p>
               </div>
             </div>
@@ -211,17 +292,75 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
                 transition={{ delay: index * 0.05 }}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-[#C6FF00] to-[#9EF01A] text-black'
-                      : 'bg-white/10 text-white border border-white/10'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                  <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-black/50' : 'text-gray-500'}`}>
-                    {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                <div className={`max-w-[85%] ${message.role === 'user' ? '' : 'space-y-3'}`}>
+                  <div
+                    className={`rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-[#C6FF00] to-[#9EF01A] text-black'
+                        : 'bg-white/10 text-white border border-white/10'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-black/50' : 'text-gray-500'}`}>
+                      {message.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+
+                  {/* 액션 버튼들 */}
+                  {message.actions && message.actions.length > 0 && !message.actionExecuted && (
+                    <motion.div 
+                      className="space-y-2 mt-3"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <p className="text-xs text-gray-400 px-2">💡 적용 가능한 변경사항:</p>
+                      {message.actions.map((action, actionIndex) => (
+                        <motion.button
+                          key={actionIndex}
+                          onClick={() => executeAction(action, message.id)}
+                          disabled={executingAction !== null}
+                          className="w-full p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 text-left hover:from-purple-500/30 hover:to-blue-500/30 transition-all disabled:opacity-50"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-white font-medium text-sm">{action.label}</p>
+                              <p className="text-gray-400 text-xs mt-1">{action.description}</p>
+                            </div>
+                            {executingAction === action.type ? (
+                              <motion.span
+                                className="text-xl"
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                              >
+                                ⏳
+                              </motion.span>
+                            ) : (
+                              <span className="text-2xl">✨</span>
+                            )}
+                          </div>
+                          <p className="text-purple-300 text-xs mt-2 italic">
+                            {action.confirmMessage}
+                          </p>
+                        </motion.button>
+                      ))}
+                    </motion.div>
+                  )}
+
+                  {/* 액션 실행 완료 표시 */}
+                  {message.actionExecuted && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="px-3 py-2 bg-green-500/20 border border-green-500/30 rounded-xl"
+                    >
+                      <p className="text-green-400 text-xs flex items-center gap-2">
+                        <span>✅</span> 변경사항이 적용되었습니다
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -234,7 +373,8 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
                 className="flex justify-start"
               >
                 <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10">
-                  <motion.div className="flex gap-1">
+                  <motion.div className="flex gap-1 items-center">
+                    <span className="text-gray-400 text-sm mr-2">분석 중</span>
                     {[0, 1, 2].map(i => (
                       <motion.span
                         key={i}
@@ -282,7 +422,7 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="메시지를 입력하세요..."
+                placeholder="기록 분석, 계획 수립을 요청해보세요..."
                 disabled={isLoading}
                 className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#C6FF00]/50 focus:bg-white/15 transition-all disabled:opacity-50"
               />
@@ -311,4 +451,3 @@ export default function AITrainerChat({ isOpen, onClose }: AITrainerChatProps) {
     </AnimatePresence>
   );
 }
-

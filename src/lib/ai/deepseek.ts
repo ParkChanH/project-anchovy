@@ -1,5 +1,5 @@
 // ============================================
-// DeepSeek AI 서비스
+// DeepSeek AI 서비스 (액션 지원 버전)
 // ============================================
 
 import { UserProfile } from '@/lib/firebase/firestore';
@@ -13,13 +13,39 @@ export interface ChatMessage {
   content: string;
 }
 
+// 액션 타입 정의
+export type ActionType = 
+  | 'update_target_weight'
+  | 'update_workout_days'
+  | 'update_goal_type'
+  | 'update_calorie_target'
+  | 'suggest_routine_change'
+  | 'add_rest_day'
+  | 'increase_protein'
+  | 'none';
+
+export interface AIAction {
+  type: ActionType;
+  label: string;
+  description: string;
+  data: Record<string, unknown>;
+  confirmMessage: string;
+}
+
+export interface AIResponseWithActions {
+  success: boolean;
+  message: string;
+  actions?: AIAction[];
+  error?: string;
+}
+
 export interface AIResponse {
   success: boolean;
   message: string;
   error?: string;
 }
 
-// 시스템 프롬프트 생성
+// 시스템 프롬프트 생성 (액션 지원)
 export function generateSystemPrompt(
   profile: UserProfile | null,
   recentLogs?: DailyLog[]
@@ -45,6 +71,7 @@ export function generateSystemPrompt(
 - 키: ${profile.height}cm
 - 현재 체중: ${profile.currentWeight}kg
 - 목표 체중: ${profile.targetWeight}kg
+- 시작 체중: ${profile.startWeight}kg
 - 목표: ${goalTypeKorean[profile.goalType] || profile.goalType}
 - 운동 경험: ${experienceKorean[profile.experienceLevel] || profile.experienceLevel}
 - 주당 운동 횟수: ${profile.workoutDaysPerWeek}회
@@ -55,50 +82,117 @@ export function generateSystemPrompt(
 `;
   }
 
+  // 최근 기록 분석
   let recentActivity = '';
+  let analysisData = '';
+  
   if (recentLogs && recentLogs.length > 0) {
+    const totalDays = recentLogs.length;
+    const avgMealScore = recentLogs.reduce((sum, log) => sum + (log.completedMeals?.length || 0), 0) / totalDays;
+    const avgExercise = recentLogs.reduce((sum, log) => sum + (log.completedExercises?.length || 0), 0) / totalDays;
+    const workoutDays = recentLogs.filter(log => (log.completedExercises?.length || 0) > 0).length;
+    
     const logSummary = recentLogs.slice(0, 7).map(log => {
       const mealScore = log.completedMeals?.length || 0;
       const exerciseCount = log.completedExercises?.length || 0;
-      return `- ${log.date}: 식사 ${mealScore}/5끼, 운동 ${exerciseCount}개 완료`;
+      return `- ${log.date}: 식사 ${mealScore}/5끼, 운동 ${exerciseCount}개`;
     }).join('\n');
     
     recentActivity = `
-## 최근 7일 활동 기록
+## 최근 기록 (${totalDays}일)
 ${logSummary}
+
+## 분석 데이터
+- 평균 식사 점수: ${avgMealScore.toFixed(1)}/5
+- 평균 운동 완료: ${avgExercise.toFixed(1)}개
+- 운동한 날: ${workoutDays}일 / ${totalDays}일
+- 운동 달성률: ${((workoutDays / Math.min(totalDays, profile?.workoutDaysPerWeek || 3)) * 100).toFixed(0)}%
+`;
+
+    analysisData = `
+## 개선 필요 사항 분석
+${avgMealScore < 3 ? '- ⚠️ 식사 점수가 낮습니다 (평균 ' + avgMealScore.toFixed(1) + '/5)' : ''}
+${workoutDays < (profile?.workoutDaysPerWeek || 3) * 0.7 ? '- ⚠️ 운동 빈도가 목표보다 낮습니다' : ''}
+${avgMealScore >= 4 && workoutDays >= (profile?.workoutDaysPerWeek || 3) ? '- ✅ 전반적으로 잘하고 있습니다!' : ''}
 `;
   }
 
-  return `당신은 "멸치탈출" 앱의 전문 AI 트레이너입니다. 친근하고 동기부여가 되는 방식으로 대화해주세요.
+  return `당신은 "멸치탈출" 앱의 전문 AI 트레이너입니다.
 
-## 역할
-- 운동과 식단에 대한 전문적인 조언 제공
-- 사용자의 목표 달성을 위한 맞춤형 가이드
-- 동기부여와 격려
-- 한국어로 자연스럽게 대화
+## 핵심 역할
+1. 사용자의 기록을 분석하여 맞춤 조언 제공
+2. 필요시 프로필/목표 변경을 제안
+3. 제안 시 반드시 JSON 형식의 액션을 포함
+
+## 응답 형식
+일반 대화: 그냥 친근하게 답변
+제안이 필요한 경우: 답변 마지막에 다음 형식으로 액션 추가
+
+[ACTION_START]
+{
+  "actions": [
+    {
+      "type": "update_target_weight",
+      "label": "목표 체중 변경",
+      "description": "목표 체중을 62kg으로 조정",
+      "data": { "targetWeight": 62 },
+      "confirmMessage": "목표 체중을 62kg으로 변경할까요?"
+    }
+  ]
+}
+[ACTION_END]
+
+## 사용 가능한 액션 타입
+- update_target_weight: 목표 체중 변경 (data: { targetWeight: number })
+- update_workout_days: 주당 운동 횟수 변경 (data: { workoutDaysPerWeek: number })
+- update_goal_type: 목표 유형 변경 (data: { goalType: "bulk" | "cut" | "maintain" })
+- add_rest_day: 휴식일 추가 권장 (data: { reason: string })
+- increase_protein: 단백질 섭취 증가 권장 (data: { amount: string })
 
 ## 대화 스타일
 - 친근하고 격려하는 톤 사용
-- 이모지를 적절히 사용하여 친근감 표현
-- 구체적이고 실행 가능한 조언 제공
-- 답변은 간결하게 (200자 내외)
-- 필요시 더 자세한 설명 제공
+- 이모지 적절히 사용
+- 구체적이고 실행 가능한 조언
+- 답변은 200자 내외로 간결하게
 
 ${userContext}
 ${recentActivity}
+${analysisData}
 
 ## 주의사항
 - 의료적 조언은 피하고, 심각한 건강 문제는 전문가 상담 권유
 - 사용자의 제한 사항(유당불내증, 채식 등)을 항상 고려
 - 무리한 운동이나 극단적인 식단은 권장하지 않음
-- 점진적인 발전을 강조`;
+- 액션은 정말 필요한 경우에만 제안 (매번 제안하지 않음)`;
 }
 
-// DeepSeek API 호출
+// AI 응답에서 액션 파싱
+function parseActionsFromResponse(content: string): { message: string; actions?: AIAction[] } {
+  const actionMatch = content.match(/\[ACTION_START\]([\s\S]*?)\[ACTION_END\]/);
+  
+  if (!actionMatch) {
+    return { message: content.trim() };
+  }
+
+  try {
+    const actionJson = JSON.parse(actionMatch[1].trim());
+    const message = content.replace(/\[ACTION_START\][\s\S]*?\[ACTION_END\]/, '').trim();
+    
+    return {
+      message,
+      actions: actionJson.actions,
+    };
+  } catch (e) {
+    console.error('액션 파싱 실패:', e);
+    return { message: content.replace(/\[ACTION_START\][\s\S]*?\[ACTION_END\]/, '').trim() };
+  }
+}
+
+// DeepSeek API 호출 (액션 포함)
 export async function callDeepSeekAPI(
   messages: ChatMessage[],
   apiKey: string
-): Promise<AIResponse> {
+): Promise<AIResponseWithActions> {
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
@@ -109,7 +203,7 @@ export async function callDeepSeekAPI(
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
         messages,
-        max_tokens: 1024,
+        max_tokens: 1500,
         temperature: 0.7,
         top_p: 0.9,
       }),
@@ -126,11 +220,15 @@ export async function callDeepSeekAPI(
     }
 
     const data = await response.json();
-    const aiMessage = data.choices?.[0]?.message?.content || '';
+    const aiContent = data.choices?.[0]?.message?.content || '';
+    
+    // 액션 파싱
+    const parsed = parseActionsFromResponse(aiContent);
 
     return {
       success: true,
-      message: aiMessage.trim(),
+      message: parsed.message,
+      actions: parsed.actions,
     };
   } catch (error) {
     console.error('DeepSeek API Call Failed:', error);
@@ -143,31 +241,37 @@ export async function callDeepSeekAPI(
 }
 
 // 빠른 응답 제안 생성
-export function getQuickReplies(context: 'greeting' | 'workout' | 'diet' | 'general'): string[] {
+export function getQuickReplies(context: 'greeting' | 'workout' | 'diet' | 'general' | 'analysis'): string[] {
   const replies: Record<string, string[]> = {
     greeting: [
-      '오늘 운동 뭐 해야 해?',
+      '이번 주 기록 분석해줘',
       '오늘 뭐 먹을까?',
-      '체중이 안 늘어요 😢',
+      '목표 조정이 필요할까?',
       '동기부여 해줘!',
     ],
     workout: [
       '무게를 얼마나 올려야 할까?',
-      '근육통이 있는데 운동해도 돼?',
+      '운동 횟수를 늘려야 할까?',
       '세트 수를 늘려야 할까?',
-      '유산소는 언제 해야 해?',
+      '휴식이 더 필요할까?',
     ],
     diet: [
-      '단백질 보충제 추천해줘',
-      '야식 먹어도 돼?',
-      '벌크업 간식 추천해줘',
-      '회식 있을 때 어떻게 해?',
+      '단백질 섭취량 늘려야 할까?',
+      '칼로리를 더 먹어야 할까?',
+      '식단 개선 방법 알려줘',
+      '보충제 추천해줘',
     ],
     general: [
-      '이번 주 잘하고 있어?',
       '목표까지 얼마나 남았어?',
       '다음 주 계획 세워줘',
       '슬럼프가 왔어 😞',
+      '진행 상황 평가해줘',
+    ],
+    analysis: [
+      '목표 체중 조정해줘',
+      '운동 횟수 변경하고 싶어',
+      '이대로 계속 가도 될까?',
+      '더 빠르게 성장하려면?',
     ],
   };
 
@@ -175,7 +279,7 @@ export function getQuickReplies(context: 'greeting' | 'workout' | 'diet' | 'gene
 }
 
 // 초기 인사말 생성
-export function getInitialGreeting(profile: UserProfile | null): string {
+export function getInitialGreeting(profile: UserProfile | null, recentLogs?: DailyLog[]): string {
   const nickname = profile?.nickname || '회원';
   const goal = profile?.goalType;
   
@@ -192,10 +296,22 @@ export function getInitialGreeting(profile: UserProfile | null): string {
   const targetWeight = profile?.targetWeight || 0;
   const remaining = Math.abs(targetWeight - currentWeight);
 
-  if (remaining > 0 && profile) {
-    return `안녕하세요 ${nickname}님! 💪 저는 당신의 AI 트레이너예요.\n\n${goalText} 목표까지 ${remaining.toFixed(1)}kg ${goal === 'cut' ? '감량' : '증량'}이 남았네요! 오늘도 화이팅! 🔥\n\n무엇이든 물어보세요!`;
+  // 최근 기록 분석
+  let analysisHint = '';
+  if (recentLogs && recentLogs.length > 0) {
+    const avgMealScore = recentLogs.reduce((sum, log) => sum + (log.completedMeals?.length || 0), 0) / recentLogs.length;
+    const workoutDays = recentLogs.filter(log => (log.completedExercises?.length || 0) > 0).length;
+    
+    if (avgMealScore < 3) {
+      analysisHint = '\n\n💡 최근 식사 기록이 조금 부족해요. 제가 도와드릴까요?';
+    } else if (workoutDays < recentLogs.length * 0.5) {
+      analysisHint = '\n\n💡 운동 빈도가 목표보다 낮네요. 계획을 조정해볼까요?';
+    }
   }
 
-  return `안녕하세요 ${nickname}님! 💪 저는 당신의 AI 트레이너예요.\n\n운동, 식단, 또는 목표에 대해 궁금한 게 있으시면 편하게 물어보세요!`;
-}
+  if (remaining > 0 && profile) {
+    return `안녕하세요 ${nickname}님! 💪 저는 당신의 AI 트레이너예요.\n\n${goalText} 목표까지 ${remaining.toFixed(1)}kg ${goal === 'cut' ? '감량' : '증량'}이 남았네요!${analysisHint}\n\n기록을 분석하고 계획을 세워드릴 수 있어요. 무엇이든 물어보세요!`;
+  }
 
+  return `안녕하세요 ${nickname}님! 💪 저는 당신의 AI 트레이너예요.\n\n운동, 식단, 또는 목표에 대해 궁금한 게 있으시면 편하게 물어보세요! 기록을 분석하고 맞춤 계획을 세워드릴 수 있어요.`;
+}

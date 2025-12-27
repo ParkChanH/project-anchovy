@@ -34,9 +34,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 액션이 있으면 함께 반환
     return NextResponse.json({
       success: true,
       message: response.message,
+      actions: response.actions,
     });
   } catch (error) {
     console.error('Chat API Error:', error);
