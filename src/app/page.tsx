@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
@@ -10,12 +10,14 @@ import ProgressCard from '@/components/dashboard/ProgressCard';
 import WorkoutCard from '@/components/dashboard/WorkoutCard';
 import MealPlanCard from '@/components/dashboard/MealPlanCard';
 import HistoryCalendar from '@/components/dashboard/HistoryCalendar';
+import AITrainerChat from '@/components/ai/AITrainerChat';
 
 export default function Home() {
   const router = useRouter();
   const { user, profile, loading, isOffline } = useAuth();
   const dDay = calculateDDay();
   const todayLabel = getTodayLabel();
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // 인증 및 온보딩 체크
   useEffect(() => {
@@ -126,6 +128,31 @@ export default function Home() {
 
       {/* 하단 네비게이션 */}
       <BottomNav />
+
+      {/* AI 트레이너 플로팅 버튼 */}
+      <motion.button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-24 right-4 z-40 w-16 h-16 rounded-full bg-gradient-to-br from-[#C6FF00] to-[#9EF01A] flex items-center justify-center shadow-lg shadow-[#C6FF00]/30"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.5, type: "spring" }}
+      >
+        <motion.span 
+          className="text-3xl"
+          animate={{ rotate: [0, -10, 10, -10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+        >
+          🤖
+        </motion.span>
+      </motion.button>
+
+      {/* AI 트레이너 챗봇 */}
+      <AITrainerChat 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
     </main>
   );
 }
